@@ -1,0 +1,111 @@
+/* ── Editor ── */
+.editor-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background-color: #1e1e1e;
+  min-width: 0;
+}
+
+.editor-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #555;
+  font-size: 15px;
+}
+
+.editor-canvas {
+  flex: 1;
+  overflow-y: auto;
+  background-color: #3c3c3c;
+  display: flex;
+  justify-content: center;
+  padding: 40px 0;
+}
+
+/* ── A4Paper ── */
+.a4-paper {
+  width: 794px;
+  min-height: 1123px;
+  background: #ffffff;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.a4-textarea {
+  width: 100%;
+  min-height: 1123px;
+  padding: 80px;
+  border: none;
+  outline: none;
+  resize: none;
+  background: transparent;
+  color: #1a1a1a;
+  line-height: 1.8;
+  font-size: 11pt;
+}
+
+/* ── Toolbar ── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 10px;
+  background-color: #2d2d2d;
+  border-bottom: 1px solid #3c3c3c;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.toolbar-select {
+  background: #3c3c3c;
+  color: #ccc;
+  border: 1px solid #555;
+  border-radius: 3px;
+  padding: 3px 8px;
+  font-size: 12px;
+  height: 28px;
+}
+
+.toolbar-btn {
+  background: transparent;
+  color: #ccc;
+  border: none;
+  border-radius: 3px;
+  padding: 4px 10px;
+  font-size: 13px;
+  height: 28px;
+  min-width: 28px;
+}
+.toolbar-btn:hover { background: #3c3c3c; }
+.toolbar-btn.save { color: #9fe1cb; }
+.toolbar-btn.snap { color: #fac775; }
+
+.toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: #444;
+  margin: 0 4px;
+}
+
+/* ── StatusBar ── */
+.statusbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  height: 26px;
+  background-color: #007acc;
+  color: white;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.statusbar-right { display: flex; gap: 16px; }
+.saved           { color: #b5e8b5; }
+.unsaved         { color: #ffcc88; }
