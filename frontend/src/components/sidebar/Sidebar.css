@@ -1,0 +1,66 @@
+.sidebar {
+  width: 240px;
+  min-width: 180px;
+  max-width: 380px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #252526;
+  border-right: 1px solid #3c3c3c;
+  flex-shrink: 0;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 8px;
+  border-bottom: 1px solid #3c3c3c;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.tab-btn {
+  background: transparent;
+  border: none;
+  color: #888;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 3px;
+}
+.tab-btn.active { color: #fff; background: #3c3c3c; }
+.tab-btn:hover  { color: #ccc; }
+
+.icon-btn {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: #888;
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+.icon-btn:hover { color: #ccc; background: #3c3c3c; }
+
+.sidebar-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.sidebar-footer {
+  padding: 8px;
+  border-top: 1px solid #3c3c3c;
+  flex-shrink: 0;
+}
+
+.footer-btn {
+  width: 100%;
+  padding: 8px 0;
+  background: #0e639c;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+}
+.footer-btn:hover { background: #1177bb; }
