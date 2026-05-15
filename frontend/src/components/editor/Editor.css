@@ -1,4 +1,4 @@
-/* ── Editor ── */
+/* ── Editor 레이아웃 ── */
 .editor-wrap {
   flex: 1;
   display: flex;
@@ -14,10 +14,33 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #555;
-  font-size: 15px;
+  background: #1e1e1e;
 }
+.editor-empty-inner { text-align: center; }
+.editor-empty-inner p { font-size: 15px; color: #555; margin-bottom: 8px; }
+.editor-empty-hint   { font-size: 12px !important; color: #3a3a3a !important; }
 
+/* ── 제목 입력 ── */
+.editor-title-wrap {
+  padding: 24px 80px 0;
+  background: #ffffff;
+  flex-shrink: 0;
+}
+.editor-title-input {
+  width: 100%;
+  border: none;
+  outline: none;
+  font-size: 2em;
+  font-weight: 700;
+  color: #1a1a1a;
+  background: transparent;
+  font-family: 'Malgun Gothic', sans-serif;
+  padding: 0 0 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.editor-title-input::placeholder { color: #ddd; }
+
+/* ── 스크롤 영역 ── */
 .editor-canvas {
   flex: 1;
   overflow-y: auto;
@@ -27,27 +50,14 @@
   padding: 40px 0;
 }
 
-/* ── A4Paper ── */
+/* ── A4 용지 ── */
 .a4-paper {
   width: 794px;
   min-height: 1123px;
   background: #ffffff;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.45);
   border-radius: 2px;
   flex-shrink: 0;
-}
-
-.a4-textarea {
-  width: 100%;
-  min-height: 1123px;
-  padding: 80px;
-  border: none;
-  outline: none;
-  resize: none;
-  background: transparent;
-  color: #1a1a1a;
-  line-height: 1.8;
-  font-size: 11pt;
 }
 
 /* ── Toolbar ── */
@@ -82,9 +92,15 @@
   height: 28px;
   min-width: 28px;
 }
-.toolbar-btn:hover { background: #3c3c3c; }
-.toolbar-btn.save { color: #9fe1cb; }
-.toolbar-btn.snap { color: #fac775; }
+.toolbar-btn:hover   { background: #3c3c3c; }
+.toolbar-btn.save    { color: #9fe1cb; }
+.toolbar-btn.snap    { color: #fac775; }
+
+.toolbar-hint {
+  font-size: 11px;
+  color: #4a4a4a;
+  padding: 0 4px;
+}
 
 .toolbar-divider {
   width: 1px;
@@ -105,7 +121,6 @@
   font-size: 12px;
   flex-shrink: 0;
 }
-
 .statusbar-right { display: flex; gap: 16px; }
-.saved           { color: #b5e8b5; }
-.unsaved         { color: #ffcc88; }
+.saved   { color: #b5e8b5; }
+.unsaved { color: #ffcc88; }

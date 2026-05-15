@@ -1,6 +1,14 @@
 import sys
 import os
+from pathlib import Path
+
+# backend/ 폴더를 모듈 경로에 등록
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+# workspace 폴더: backend/ 바로 옆에 위치
+# 예) word_processor/workspace/
+WORKSPACE_DIR = Path(__file__).parent.parent / "workspace"
+WORKSPACE_DIR.mkdir(exist_ok=True)   # 없으면 자동 생성
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,15 +19,15 @@ from storage.database import init_db
 app = FastAPI(title="Roots API", version="0.1.0")
 
 
-# ── 앱 시작 시 DB 초기화 ──────────────────────────────
+# ── 앱 시작 시 DB + workspace 초기화 ─────────────────
 @app.on_event("startup")
 def startup():
     init_db()
-    print("✅ DB 초기화 완료")
+    print(f"✅ DB 초기화 완료")
+    print(f"📁 workspace 경로: {WORKSPACE_DIR}")
+
 
 # ── CORS 설정 ─────────────────────────────────────────
-# React(localhost:5173)에서 FastAPI(localhost:8000)로
-# 요청할 때 브라우저가 막지 않도록 허용
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],
@@ -38,6 +46,12 @@ app.include_router(memo.router,      prefix="/memo",      tags=["메모"])
 @app.get("/")
 def root():
     return {"status": "ok", "message": "Roots API 실행 중"}
+
+
+# ── workspace 경로 반환 (프론트엔드에서 초기 폴더 설정용) ──
+@app.get("/workspace")
+def get_workspace():
+    return {"status": "ok", "data": {"path": str(WORKSPACE_DIR)}}
 
 
 # ── 직접 실행 시 ──────────────────────────────────────
