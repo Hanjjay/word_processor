@@ -1,0 +1,140 @@
+.ps-wrap {
+  position: relative;
+  padding: 0;
+  border-bottom: 1px solid #2d2d2d;
+  flex-shrink: 0;
+}
+
+.ps-current {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  cursor: pointer;
+  user-select: none;
+  background: #252526;
+}
+.ps-current:hover { background: #2a2a2a; }
+
+.ps-current-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ps-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ps-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #cccccc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ps-chevron {
+  font-size: 10px;
+  color: #666;
+  flex-shrink: 0;
+}
+
+/* 배경 클릭 닫기 */
+.ps-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+}
+
+/* 드롭다운 */
+.ps-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: #252526;
+  border: 1px solid #3c3c3c;
+  border-radius: 0 0 6px 6px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  padding: 4px 0;
+}
+
+.ps-dropdown-label {
+  font-size: 10px;
+  color: #666;
+  letter-spacing: 0.5px;
+  padding: 6px 12px 4px;
+  font-weight: 500;
+}
+
+.ps-item {
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  cursor: pointer;
+}
+.ps-item:hover { background: #2a2d2e; }
+.ps-item.active { background: #37373d; }
+
+.ps-item-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  padding: 7px 4px;
+  min-width: 0;
+}
+
+.ps-item-title {
+  font-size: 13px;
+  color: #cccccc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ps-item-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+.ps-item:hover .ps-item-actions { opacity: 1; }
+
+.ps-item-actions button {
+  background: transparent;
+  border: none;
+  color: #888;
+  font-size: 12px;
+  padding: 2px 5px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.ps-item-actions button:hover { background: #3c3c3c; color: #ccc; }
+.ps-item-actions button.danger:hover { color: #f97583; }
+
+.ps-divider {
+  height: 1px;
+  background: #3c3c3c;
+  margin: 4px 0;
+}
+
+.ps-create-btn {
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  color: #9d8bff;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  font-weight: 500;
+}
+.ps-create-btn:hover { background: #2a2a2a; }
