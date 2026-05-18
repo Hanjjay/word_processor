@@ -1,121 +1,70 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { api } from '../../api'
-import Toolbar      from './Toolbar'
-import TipTapEditor from './TipTapEditor'
-import StatusBar    from './StatusBar'
+import { useState, useEffect, useCallback } from 'react'
+import { useDroppable } from '@dnd-kit/core'
+import MenuBar    from './MenuBar'
+import Breadcrumb from './Breadcrumb'
+import Toolbar    from './Toolbar'
+import EditorPane from './EditorPane'
 import './Editor.css'
+import './EditorDropZone.css'
 
 /**
- * Editor.jsx — TipTap 통합 버전
- *
- * 모드에 따라 TipTapEditor에 다른 CSS 클래스가 적용됩니다.
- * 에디터 자체는 항상 동일 — 모드는 스타일과 기능의 차이입니다.
- *
- * 일반        → 기본 폰트, 마크다운 단축키 활성
- * 마크다운    → 동일 (모드 표시만 다름)
- * 대본        → Courier New 폰트, 넓은 줄간격
- * 뮤지컬 가사 → 큰 폰트, 매우 넓은 줄간격
+ * Editor
+ * - 제목 입력창 없음 (사이드바에서 관리)
+ * - 분할 화면 지원
  */
-function Editor({ docId, fileData }) {
-  const [doc,       setDoc]       = useState(null)
-  const [content,   setContent]   = useState('')
-  const [mode,      setMode]      = useState('일반')
-  const [charCount, setCharCount] = useState(0)
-  const [saveState, setSaveState] = useState('저장됨')
-  const [title,     setTitle]     = useState('')
-  const autosaveTimer = useRef(null)
+function Editor({
+  docId, project, tree,
+  onDocSaved, onNewDoc, onNewProject,
+  splitMode, setSplitMode,
+  docId2, setDocId2,
+  focusedPane, setFocusedPane,
+  isDragging,
+}) {
+  const [mode, setMode] = useState('일반')
 
-  // ── DB 문서 로드 ─────────────────────────────────────
-  useEffect(() => {
-    if (!docId) return
-    api.document.get(docId)
-      .then(res => {
-        setDoc(res.data)
-        setContent(res.data.content ?? '')
-        setMode(res.data.mode ?? '일반')
-        setTitle(res.data.title ?? '')
-        setSaveState('저장됨')
-        setCharCount((res.data.content ?? '').replace(/\s/g, '').length)
-      })
-      .catch(console.error)
-  }, [docId])
+  const handleSaved = useCallback(() => onDocSaved?.(), [onDocSaved])
 
-  // ── 탐색기 파일 로드 ──────────────────────────────────
-  useEffect(() => {
-    if (!fileData) return
-    setContent(fileData.content ?? '')
-    setMode(fileData.mode ?? '일반')
-    setTitle(fileData.filename ?? '')
-    setDoc(null)
-    setSaveState('파일 열기')
-    setCharCount((fileData.content ?? '').replace(/\s/g, '').length)
-  }, [fileData])
+  const toggleSplit = () => {
+    setSplitMode(p => {
+      if (p) { setDocId2(null); setFocusedPane(1) }
+      return !p
+    })
+  }
 
-  // ── F3: 일반 ↔ 마크다운 토글 ─────────────────────────
+  // F3: 일반 ↔ 마크다운
   useEffect(() => {
-    const onKey = (e) => {
+    const fn = (e) => {
       if (e.key === 'F3') {
         e.preventDefault()
         setMode(p => p === '마크다운' ? '일반' : '마크다운')
       }
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener('keydown', fn)
+    return () => window.removeEventListener('keydown', fn)
   }, [])
 
-  // ── Ctrl+S ────────────────────────────────────────────
+  // Ctrl+S
   useEffect(() => {
-    const onKey = (e) => {
+    const fn = (e) => {
       if (e.key === 's' && (e.ctrlKey || e.metaKey)) {
         e.preventDefault()
-        handleSave()
+        window.__activePaneSave?.()
       }
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [docId, doc, content, mode, title])
+    window.addEventListener('keydown', fn)
+    return () => window.removeEventListener('keydown', fn)
+  }, [])
 
-  // ── 내용 변경 + 자동 저장 ────────────────────────────
-  const handleContentChange = useCallback((markdown) => {
-    setContent(markdown)
-    setSaveState('저장 안 됨')
-    setCharCount(markdown.replace(/\s/g, '').length)
-
-    if (autosaveTimer.current) clearTimeout(autosaveTimer.current)
-    autosaveTimer.current = setTimeout(() => {
-      if (!docId) return
-      api.document.autosave(docId, markdown)
-        .then(() => setSaveState('저장됨'))
-        .catch(console.error)
-    }, 3000)
-  }, [docId])
-
-  // ── 수동 저장 ────────────────────────────────────────
-  const handleSave = useCallback(async () => {
-    if (!docId || !doc) return
-    try {
-      await api.document.save(docId, title || doc.title, content, mode)
-      setSaveState('저장됨')
-    } catch (e) { alert(e.message) }
-  }, [docId, doc, content, mode, title])
-
-  // ── 스냅샷 ───────────────────────────────────────────
-  const handleSnapshot = useCallback(async () => {
-    if (!docId) return
-    const memo = window.prompt('스냅샷 메모 (선택사항)') ?? ''
-    try {
-      await api.snapshot.take(docId, content, memo)
-      alert('스냅샷이 저장되었습니다.')
-    } catch (e) { alert(e.message) }
-  }, [docId, content])
-
-  // ── 미선택 상태 ──────────────────────────────────────
-  if (!docId && !fileData) {
+  if (!project) {
     return (
-      <div className="editor-empty">
-        <div className="editor-empty-inner">
-          <p>왼쪽에서 문서를 선택하거나 새 문서를 만드세요</p>
-          <p className="editor-empty-hint">F3 — 마크다운 모드 전환</p>
+      <div className="editor-wrap">
+        <MenuBar
+          mode={mode} onModeChange={setMode}
+          onNewProject={onNewProject}
+          splitMode={splitMode} onToggleSplit={toggleSplit}
+        />
+        <div className="editor-empty">
+          <p>먼저 프로젝트를 선택하거나 만들어주세요</p>
         </div>
       </div>
     )
@@ -124,37 +73,93 @@ function Editor({ docId, fileData }) {
   return (
     <div className="editor-wrap">
 
-      {/* 툴바 */}
+      <MenuBar
+        mode={mode}
+        onModeChange={setMode}
+        onSave={() => window.__activePaneSave?.()}
+        onNewDoc={onNewDoc}
+        onNewProject={onNewProject}
+        splitMode={splitMode}
+        onToggleSplit={toggleSplit}
+      />
+
+      <Breadcrumb
+        project={project}
+        docId={focusedPane === 1 ? docId : docId2}
+        tree={tree}
+      />
+
       <Toolbar
         mode={mode}
         onModeChange={setMode}
-        onSave={handleSave}
-        onSnapshot={handleSnapshot}
+        onSave={() => window.__activePaneSave?.()}
+        splitMode={splitMode}
+        onToggleSplit={toggleSplit}
       />
 
-      {/* 제목 */}
-      <div className="editor-title-wrap">
-        <input
-          className="editor-title-input"
-          value={title}
-          onChange={e => setTitle(e.target.value)}
-          placeholder="제목 없음"
-        />
-      </div>
+      {/* ★ 제목 입력창 없음 */}
 
-      {/* 에디터 — TipTap 단일 컴포넌트 */}
-      <div className="editor-canvas">
-        <div className="a4-paper">
-          <TipTapEditor
-            content={content}
-            onChange={handleContentChange}
-            mode={mode}
-          />
+      {!docId ? (
+        <div className="editor-empty">
+          <div className="editor-empty-inner">
+            <p>왼쪽 트리에서 문서를 선택하세요</p>
+            <p className="editor-empty-hint">
+              💡 문서를 드래그해서 에디터로 드롭할 수도 있어요
+            </p>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className={`editor-panes ${splitMode ? 'split' : ''}`}>
 
-      {/* 상태 표시줄 */}
-      <StatusBar charCount={charCount} mode={mode} saveState={saveState} />
+          <DroppablePane paneId="pane1" isDragging={isDragging}>
+            <EditorPane
+              docId={docId}
+              mode={mode}
+              onSaved={handleSaved}
+              isFocused={focusedPane === 1}
+              onFocus={() => setFocusedPane(1)}
+            />
+          </DroppablePane>
+
+          {splitMode && <div className="editor-split-divider" />}
+
+          {splitMode && (
+            <DroppablePane paneId="pane2" isDragging={isDragging}>
+              <EditorPane
+                docId={docId2}
+                mode={mode}
+                onSaved={handleSaved}
+                isFocused={focusedPane === 2}
+                onFocus={() => setFocusedPane(2)}
+              />
+            </DroppablePane>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DroppablePane({ paneId, isDragging, children }) {
+  const { isOver, setNodeRef } = useDroppable({
+    id: `editor-drop-zone-${paneId}`,
+    data: { type: 'editor-pane', paneId },
+  })
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`editor-drop-zone
+        ${isDragging ? 'drag-active' : ''}
+        ${isOver     ? 'drag-over'   : ''}`}
+    >
+      {isDragging && (
+        <div className="drop-hint">
+          <span>📄</span>
+          <span>{paneId === 'pane2' ? '패널 2에서 열기' : '이 패널에서 열기'}</span>
+        </div>
+      )}
+      {children}
     </div>
   )
 }

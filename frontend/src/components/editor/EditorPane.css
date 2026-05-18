@@ -1,0 +1,71 @@
+/* ── 패널 전체 ── */
+.epane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  border-right: 1px solid #2d2d2d;
+  background: #3c3c3c;
+  cursor: text;
+}
+.epane:last-child { border-right: none; }
+
+/* 포커스 패널 구분선 강조 */
+.epane.focused .epane-header {
+  border-bottom-color: #5b4fcf;
+}
+
+/* ── 패널 헤더 ── */
+.epane-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 32px;
+  padding: 0 16px;
+  background: #252526;
+  border-bottom: 2px solid #3c3c3c;
+  flex-shrink: 0;
+}
+
+.epane-title {
+  font-size: 12px;
+  color: #cccccc;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 70%;
+}
+
+.epane-save {
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.epane-save.saved   { color: #6dbf8a; }
+.epane-save.unsaved { color: #e5a44b; }
+
+/* ── 스크롤 영역 ── */
+.epane-canvas {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  justify-content: center;
+  padding: 40px 0;
+  background: #3c3c3c;
+}
+
+.epane-canvas::-webkit-scrollbar       { width: 8px; }
+.epane-canvas::-webkit-scrollbar-track { background: #3c3c3c; }
+.epane-canvas::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
+
+/* ── 빈 상태 ── */
+.epane-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #555;
+  font-size: 13px;
+  background: #3c3c3c;
+}
