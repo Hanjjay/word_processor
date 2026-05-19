@@ -1,0 +1,160 @@
+.pt-tree {
+  padding: 4px 0 24px;
+}
+
+/* ── 섹션 헤더 ── */
+.pt-section-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  color: #bbbbbb;
+  font-size: 12px;
+}
+.pt-section-head:hover { background: #2a2d2e; }
+
+/* depth별 배경 구분 */
+.pt-section-head.depth-0 { color: #cccccc; font-weight: 500; }
+.pt-section-head.depth-1 { color: #bbbbbb; }
+.pt-section-head.depth-2 { color: #aaaaaa; }
+
+.pt-arrow {
+  font-size: 10px;
+  color: #555;
+  flex-shrink: 0;
+  width: 12px;
+  text-align: center;
+}
+
+.pt-section-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+}
+.pt-section-name.top-level {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: #888;
+}
+
+.pt-type-badge {
+  font-size: 9px;
+  font-weight: 600;
+  color: #5b4fcf;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+/* ── 액션 버튼 (호버 시) ── */
+.pt-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: 4px;
+  flex-shrink: 0;
+  position: relative;
+}
+.pt-actions button {
+  background: transparent;
+  border: none;
+  color: #666;
+  font-size: 13px;
+  padding: 2px 5px;
+  border-radius: 3px;
+  cursor: pointer;
+  line-height: 1;
+}
+.pt-actions button:hover { background: #3c3c3c; color: #ccc; }
+
+/* ── 컨텍스트 메뉴 ── */
+.pt-context-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 200;
+  background: #252526;
+  border: 1px solid #454545;
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+  padding: 4px 0;
+  min-width: 130px;
+}
+.pt-context-menu button {
+  display: block;
+  width: 100%;
+  padding: 6px 12px;
+  background: transparent;
+  border: none;
+  color: #cccccc;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.pt-context-menu button:hover { background: #094771; }
+.pt-context-menu button.danger { color: #f97583; }
+.pt-context-menu button.danger:hover { background: #3c1a1a; }
+.pt-menu-divider { height: 1px; background: #3c3c3c; margin: 3px 0; }
+
+/* ── 빈 힌트 ── */
+.pt-empty-hint {
+  font-size: 11px;
+  color: #444;
+  padding: 4px 0;
+  height: 24px;
+  display: flex;
+  align-items: center;
+}
+
+/* ── 문서 아이템 ── */
+.pt-doc {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  cursor: pointer;
+  color: #aaaaaa;
+  font-size: 12px;
+  position: relative;
+}
+.pt-doc:hover { background: #2a2d2e; }
+.pt-doc.active {
+  background: #094771;
+  color: #ffffff;
+}
+
+.pt-doc-icon { font-size: 12px; flex-shrink: 0; }
+
+.pt-doc-title {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pt-doc-count {
+  font-size: 10px;
+  color: #555;
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+.pt-doc-delete {
+  display: none;
+  background: transparent;
+  border: none;
+  color: #666;
+  font-size: 11px;
+  padding: 2px 5px;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+.pt-doc:hover .pt-doc-delete { display: block; }
+.pt-doc-delete:hover { color: #f97583; }

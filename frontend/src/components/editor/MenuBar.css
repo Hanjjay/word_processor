@@ -1,0 +1,113 @@
+.menubar {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  background-color: #1a1a1a;
+  border-bottom: 1px solid #2d2d2d;
+  flex-shrink: 0;
+  user-select: none;
+  z-index: 100;
+}
+
+/* 로고 */
+.menubar-logo {
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #9d8bff;
+  letter-spacing: 2px;
+  flex-shrink: 0;
+  border-right: 1px solid #2d2d2d;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+/* 메뉴 항목 래퍼 */
+.menubar-items {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  flex: 1;
+}
+
+.menubar-item {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+/* 메뉴 버튼 */
+.menubar-btn {
+  height: 100%;
+  padding: 0 10px;
+  background: transparent;
+  border: none;
+  color: #bbbbbb;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.menubar-btn:hover,
+.menubar-btn.active {
+  background-color: #2d2d2d;
+  color: #ffffff;
+}
+
+/* 오른쪽 영역 */
+.menubar-right {
+  padding: 0 16px;
+  flex-shrink: 0;
+}
+.save-state {
+  font-size: 12px;
+}
+.save-state.saved   { color: #6dbf8a; }
+.save-state.unsaved { color: #e5a44b; }
+
+/* ── 드롭다운 ── */
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 999;
+  background: #252526;
+  border: 1px solid #454545;
+  border-radius: 0 0 6px 6px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  min-width: 200px;
+  padding: 4px 0;
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: #3c3c3c;
+  margin: 3px 0;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 6px 14px;
+  background: transparent;
+  border: none;
+  color: #cccccc;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  gap: 24px;
+}
+.dropdown-item:hover:not(.disabled) { background: #094771; }
+.dropdown-item.disabled { color: #555; cursor: default; }
+
+.dropdown-label  { white-space: nowrap; }
+.dropdown-check  { color: #9d8bff; }
+.dropdown-shortcut {
+  font-size: 11px;
+  color: #666;
+  white-space: nowrap;
+  flex-shrink: 0;
+}

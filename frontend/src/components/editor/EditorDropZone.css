@@ -1,0 +1,44 @@
+.editor-drop-zone {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  min-width: 0;
+  height: 100%;
+}
+
+.editor-drop-zone.drag-active {
+  outline: 2px dashed #3c3c6c;
+  outline-offset: -2px;
+}
+
+.editor-drop-zone.drag-over {
+  outline: 2px dashed #5b4fcf;
+  background: rgba(91, 79, 207, 0.05);
+}
+
+.drop-hint {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #1a2a4a;
+  border: 1.5px solid #007acc;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 12px;
+  color: #aaa;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.editor-drop-zone.drag-over .drop-hint {
+  color: #ccc;
+  border-color: #9d8bff;
+  background: #2a1f50;
+}
