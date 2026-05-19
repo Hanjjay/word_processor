@@ -11,23 +11,18 @@ import './TipTapEditor.css'
 function EditorPane({ docId, mode, onSaved, isFocused, onFocus }) {
   const [saveState, setSaveState] = useState('저장됨')
   const [docTitle,  setDocTitle]  = useState('')
-  const [editorKey, setEditorKey] = useState(0)  // 재생성 트리거
+  const [editorKey, setEditorKey] = useState(0)
 
-  const docRef     = useRef(null)
-  const contentRef = useRef('')
-  const prevMode   = useRef(mode)
-  const timerRef   = useRef(null)
+  const docRef          = useRef(null)
+  const contentRef      = useRef('')      // 마크다운 문자열 (DB 저장용)
+  const jsonRef         = useRef(null)    // ★ TipTap JSON 상태 (모드 전환 복원용)
+  const cursorRef       = useRef(null)    // ★ 커서 위치 (포커스 복원용)
+  const prevMode        = useRef(mode)
+  const timerRef        = useRef(null)
+  const isModeSwitching = useRef(false)
+
   const isMarkdown = mode === '마크다운'
 
-  // ── mode 변경 → editorKey 증가 → 에디터 재생성 ────────
-  useEffect(() => {
-    if (prevMode.current === mode) return
-    prevMode.current = mode
-    // contentRef는 그대로 → 재생성된 에디터에 복원됨
-    setEditorKey(k => k + 1)
-  }, [mode])
-
-  // ── TipTap 에디터 ─────────────────────────────────────
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -52,9 +47,9 @@ function EditorPane({ docId, mode, onSaved, isFocused, onFocus }) {
         showOnlyCurrent: false,
       }),
     ],
-    enableInputRules: isMarkdown,   // 재생성 시 올바르게 적용
+    enableInputRules: isMarkdown,
     enablePasteRules: isMarkdown,
-    content: contentRef.current,   // 이전 내용 복원
+    content: jsonRef.current || contentRef.current || '',
     onUpdate: ({ editor }) => {
       const md = editor.storage.markdown.getMarkdown()
       contentRef.current = md
@@ -76,11 +71,62 @@ function EditorPane({ docId, mode, onSaved, isFocused, onFocus }) {
         spellcheck: 'false',
       },
     },
-  }, [editorKey])   // editorKey 바뀔 때만 재생성
+  }, [editorKey])
 
-  // ── 문서 로드 ──────────────────────────────────────────
+  // ── mode 변경 ─────────────────────────────────────────
+  useEffect(() => {
+    if (prevMode.current === mode) return
+    prevMode.current = mode
+
+    if (editor && !editor.isDestroyed) {
+      // ★ 마크다운(DB용) + JSON(빈줄 보존용) 동시 저장
+      contentRef.current = editor.storage.markdown.getMarkdown()
+      jsonRef.current    = editor.getJSON()
+
+      // ★ 현재 커서 위치 저장 (포커스 복원용)
+      const { from } = editor.state.selection
+      cursorRef.current = from
+    }
+
+    isModeSwitching.current = true
+    setEditorKey(k => k + 1)
+  }, [mode, editor])
+
+  // ── 문서 로드 ─────────────────────────────────────────
   useEffect(() => {
     if (!editor || !docId) return
+
+    // ★ 모드 전환으로 인한 editor 재생성 → DB 로드 건너뜀
+    if (isModeSwitching.current) {
+      isModeSwitching.current = false
+
+      // ★ JSON으로 복원 (빈줄·서식 구조 완벽 보존)
+      if (jsonRef.current) {
+        editor.commands.setContent(jsonRef.current, false)
+        jsonRef.current = null
+      } else {
+        editor.commands.setContent(contentRef.current, false)
+      }
+
+      // ★ 커서 위치 복원 + 포커스
+      setTimeout(() => {
+        if (!editor || editor.isDestroyed) return
+        const docSize = editor.state.doc.content.size
+        const pos     = Math.min(cursorRef.current ?? 0, docSize - 1)
+        editor.commands.focus()
+        try {
+          editor.commands.setTextSelection(pos)
+        } catch {
+          editor.commands.focus('end')
+        }
+      }, 0)
+
+      return
+    }
+
+    // 진짜 문서 전환 → DB 로드
+    jsonRef.current    = null
+    cursorRef.current  = null
     api.document.get(docId)
       .then(res => {
         docRef.current     = res.data
@@ -93,7 +139,7 @@ function EditorPane({ docId, mode, onSaved, isFocused, onFocus }) {
       .catch(err => console.error('문서 로드 실패:', err))
   }, [docId, editor])
 
-  // ── 수동 저장 등록 ─────────────────────────────────────
+  // ── 수동 저장 ─────────────────────────────────────────
   useEffect(() => {
     if (!isFocused) return
     window.__activePaneSave = async () => {
