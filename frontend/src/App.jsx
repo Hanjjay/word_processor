@@ -8,6 +8,7 @@ function App() {
   const [currentDocId,   setCurrentDocId]   = useState(null)
   const [tree,           setTree]           = useState(null)  // 빵부스러기용
   const [refreshKey,     setRefreshKey]     = useState(0)
+  const [focusedPane,    setFocusedPane]    = useState(1)
 
   const handleDocSaved = useCallback(() => {
     setRefreshKey(k => k + 1)
@@ -44,6 +45,8 @@ function App() {
         docId={currentDocId}
         project={currentProject}
         tree={tree}
+        focusedPane={focusedPane}
+        setFocusedPane={setFocusedPane}
         onDocSaved={handleDocSaved}
         onNewDoc={handleNewDoc}
         onNewProject={() => setRefreshKey(k => k + 1)}
