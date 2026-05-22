@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import Sidebar from './components/sidebar/Sidebar'
 import Editor  from './components/editor/Editor'
+//import MenuBar     from './components/menubar/MenuBar'       // ← 변경
 import './App.css'
 
 function App() {
