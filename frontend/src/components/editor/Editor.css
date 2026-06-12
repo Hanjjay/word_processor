@@ -95,6 +95,35 @@
 .toolbar-btn:hover   { background: #3c3c3c; }
 .toolbar-btn.save    { color: #9fe1cb; }
 .toolbar-btn.snap    { color: #fac775; }
+.toolbar-btn.split          { color: #9dbbe5; }
+.toolbar-btn.split.active   { background: #3c3c3c; color: #d6c2ff; }
+
+/* ── 분할 편집 영역 ── */
+.editor-panes {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+.editor-panes [data-group] {  /* PanelGroup 루트 */
+  height: 100%;
+  width: 100%;
+}
+.editor-panes [data-panel] {
+  height: 100%;
+  overflow: hidden;
+}
+
+.editor-resize-handle {
+  width: 4px;
+  background: #2d2d2d;
+  cursor: col-resize;
+  flex-shrink: 0;
+}
+.editor-resize-handle:hover,
+.editor-resize-handle[data-resize-handle-active] {
+  background: #5b4fcf;
+}
 
 .toolbar-hint {
   font-size: 11px;

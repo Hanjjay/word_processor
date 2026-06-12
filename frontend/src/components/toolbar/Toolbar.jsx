@@ -1,6 +1,6 @@
 import './Toolbar.css'
 
-function Toolbar({ mode, onModeChange, onSave, onSnapshot }) {
+function Toolbar({ mode, onModeChange, onSave, onSnapshot, splitMode, onToggleSplit }) {
   return (
     <div className="toolbar">
       <select className="toolbar-select" value={mode} onChange={e => onModeChange(e.target.value)}>
@@ -20,6 +20,16 @@ function Toolbar({ mode, onModeChange, onSave, onSnapshot }) {
 
       <button className="toolbar-btn save" onClick={onSave}>저장</button>
       <button className="toolbar-btn snap" onClick={onSnapshot}>스냅샷</button>
+
+      <div className="toolbar-divider" />
+
+      <button
+        className={`toolbar-btn split ${splitMode ? 'active' : ''}`}
+        onClick={onToggleSplit}
+        title={splitMode ? '분할 닫기' : '화면 분할'}
+      >
+        {splitMode ? '⬛ 분할 닫기' : '◫ 분할'}
+      </button>
     </div>
   )
 }
