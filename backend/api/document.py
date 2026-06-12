@@ -17,14 +17,16 @@ class CreateBody(BaseModel):
     mode:       str        = "일반"
 
 class SaveBody(BaseModel):
-    doc_id:  int
-    title:   str
-    content: str
-    mode:    str = "일반"
+    doc_id:       int
+    title:        str
+    content:      str
+    mode:         str = "일반"
+    content_json: dict | list | None = None
 
 class AutosaveBody(BaseModel):
-    doc_id:  int
-    content: str
+    doc_id:       int
+    content:      str
+    content_json: dict | list | None = None
 
 class CountBody(BaseModel):
     content: str
@@ -77,15 +79,15 @@ def get_document(doc_id: int):
 def save_document(body: SaveBody):
     """문서 전체 저장 (제목·내용·모드)"""
     doc = doc_feat.save_document(
-        body.doc_id, body.title, body.content, body.mode
+        body.doc_id, body.title, body.content, body.mode, body.content_json
     )
     return {"status": "ok", "data": doc}
 
 
 @router.post("/autosave")
 def autosave_document(body: AutosaveBody):
-    """자동 저장 — 내용만"""
-    doc_feat.autosave_document(body.doc_id, body.content)
+    """자동 저장 — 내용·TipTap JSON"""
+    doc_feat.autosave_document(body.doc_id, body.content, body.content_json)
     return {"status": "ok"}
 
 

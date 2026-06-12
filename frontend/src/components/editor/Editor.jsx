@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useDroppable } from '@dnd-kit/core'
-import MenuBar    from '../menubar/MenuBar'       // ← 변경
-import Breadcrumb from '../breadcrumb/Breadcrumb' // ← 변경
-import Toolbar    from '../toolbar/Toolbar'       // ← 변경
+import MenuBar    from '../menubar/MenuBar'
+import Breadcrumb from '../breadcrumb/Breadcrumb'
+import Toolbar    from '../toolbar/Toolbar'
 import EditorPane from './EditorPane'
 import './Editor.css'
 import './EditorDropZone.css'
-//import StatusBar  from '../statusbar/StatusBar'   // ← 변경
+//import StatusBar  from '../statusbar/StatusBar'
 
 /**
  * Editor

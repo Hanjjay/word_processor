@@ -81,6 +81,7 @@ def init_db():
         section_id  INTEGER          DEFAULT NULL,
         title       TEXT    NOT NULL DEFAULT '제목 없음',
         content     TEXT    NOT NULL DEFAULT '',
+        content_json TEXT           DEFAULT NULL,   -- TipTap JSON (구조 보존용, 신규 저장부터)
         mode        TEXT    NOT NULL DEFAULT '일반',   -- 일반/대본/뮤지컬 가사
         sort_order  INTEGER NOT NULL DEFAULT 0,
         word_count  INTEGER NOT NULL DEFAULT 0,
@@ -174,6 +175,13 @@ def init_db():
     CREATE INDEX IF NOT EXISTS idx_pomodoro_project   ON pomodoro_log(project_id);
 
     """)
+
+    # ── 마이그레이션: 기존 DB에 content_json 컬럼 추가 ──────
+    cols = [r["name"] for r in conn.execute("PRAGMA table_info(documents)").fetchall()]
+    if "content_json" not in cols:
+        conn.execute("ALTER TABLE documents ADD COLUMN content_json TEXT DEFAULT NULL")
+        print("🔧 documents.content_json 컬럼 추가 (마이그레이션)")
+
     conn.commit()
     conn.close()
     print("✅ DB 초기화 완료 (v2 — 다중 프로젝트 구조)")

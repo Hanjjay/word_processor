@@ -5,6 +5,7 @@ features/document.py — 문서 관련 기능 코드 (v2)
 project_id 필수, section_id 는 선택 (없으면 프로젝트 루트).
 저장은 SQLite만 사용 (v1의 .docx 이중 저장 제거).
 """
+import json
 from pathlib import Path
 from storage.database import get_connection
 
@@ -39,13 +40,21 @@ def get_document(doc_id: int) -> dict | None:
     """문서 단건 조회"""
     conn = get_connection()
     row = conn.execute(
-        """SELECT id, project_id, section_id, title, content,
+        """SELECT id, project_id, section_id, title, content, content_json,
                   mode, word_count, sort_order, created_at, updated_at
            FROM documents WHERE id=?""",
         (doc_id,)
     ).fetchone()
     conn.close()
-    return dict(row) if row else None
+    if not row:
+        return None
+    doc = dict(row)
+    if doc["content_json"]:
+        try:
+            doc["content_json"] = json.loads(doc["content_json"])
+        except (TypeError, ValueError):
+            doc["content_json"] = None
+    return doc
 
 
 def list_documents(project_id: int, section_id: int = None) -> list[dict]:
@@ -81,16 +90,18 @@ def list_all_documents(project_id: int) -> list[dict]:
     return [dict(r) for r in rows]
 
 
-def save_document(doc_id: int, title: str, content: str, mode: str) -> dict:
-    """문서 전체 저장 (제목·내용·모드)"""
+def save_document(doc_id: int, title: str, content: str, mode: str,
+                  content_json: dict | list | None = None) -> dict:
+    """문서 전체 저장 (제목·내용·모드·TipTap JSON)"""
     word_count = _count_words(content)
+    content_json_str = json.dumps(content_json, ensure_ascii=False) if content_json is not None else None
     conn = get_connection()
     conn.execute(
         """UPDATE documents
-           SET title=?, content=?, mode=?, word_count=?,
+           SET title=?, content=?, content_json=?, mode=?, word_count=?,
                updated_at=datetime('now','localtime')
            WHERE id=?""",
-        (title, content, mode, word_count, doc_id)
+        (title, content, content_json_str, mode, word_count, doc_id)
     )
     # 프로젝트 수정 시간도 갱신
     row = conn.execute("SELECT project_id FROM documents WHERE id=?", (doc_id,)).fetchone()
@@ -104,16 +115,17 @@ def save_document(doc_id: int, title: str, content: str, mode: str) -> dict:
     return get_document(doc_id)
 
 
-def autosave_document(doc_id: int, content: str) -> bool:
-    """자동 저장 — 내용·단어 수만 업데이트"""
+def autosave_document(doc_id: int, content: str, content_json: dict | list | None = None) -> bool:
+    """자동 저장 — 내용·단어 수·TipTap JSON만 업데이트"""
     word_count = _count_words(content)
+    content_json_str = json.dumps(content_json, ensure_ascii=False) if content_json is not None else None
     conn = get_connection()
     conn.execute(
         """UPDATE documents
-           SET content=?, word_count=?,
+           SET content=?, content_json=?, word_count=?,
                updated_at=datetime('now','localtime')
            WHERE id=?""",
-        (content, word_count, doc_id)
+        (content, content_json_str, word_count, doc_id)
     )
     conn.commit()
     conn.close()

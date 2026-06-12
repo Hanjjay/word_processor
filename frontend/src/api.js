@@ -41,8 +41,10 @@ export const api = {
     list:     (project_id, section_id=null) => request('GET',    `/document/list?project_id=${project_id}&section_id=${section_id ?? ''}`),
     listAll:  (project_id)                  => request('GET',    `/document/list-all?project_id=${project_id}`),
     get:      (id)                          => request('GET',    `/document/${id}`),
-    save:     (id, title, content, mode)    => request('POST',   '/document/save',     { doc_id: id, title, content, mode }),
-    autosave: (id, content)                 => request('POST',   '/document/autosave', { doc_id: id, content }),
+    save:     (id, title, content, mode, content_json=null) =>
+                request('POST',   '/document/save',     { doc_id: id, title, content, mode, content_json }),
+    autosave: (id, content, content_json=null) =>
+                request('POST',   '/document/autosave', { doc_id: id, content, content_json }),
     move:     (id, new_section_id)          => request('PATCH',  `/document/${id}/move`, { new_section_id }),
     reorder:  (sibling_ids)                 => request('POST',   '/document/reorder',  { sibling_ids }),
     delete:   (id)                          => request('DELETE', `/document/${id}`),

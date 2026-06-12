@@ -4,7 +4,7 @@ import StarterKit   from '@tiptap/starter-kit'
 import Placeholder  from '@tiptap/extension-placeholder'
 import Typography   from '@tiptap/extension-typography'
 import { Markdown } from 'tiptap-markdown'
-import { api }      from '../../api'    // components/editor/ → src/api.js
+import { api }      from '../../api'
 import './EditorPane.css'
 import './TipTapEditor.css'
 
@@ -14,6 +14,7 @@ function EditorPane({ docId, mode, onSaved, onSaveState, isFocused, onFocus }) {
 
   const docRef          = useRef(null)
   const contentRef      = useRef('')
+  const contentJsonRef  = useRef(null)   // TipTap JSON (구조 보존 저장용)
   const jsonRef         = useRef(null)
   const cursorRef       = useRef(null)
   const prevMode        = useRef(mode)
@@ -51,13 +52,14 @@ function EditorPane({ docId, mode, onSaved, onSaveState, isFocused, onFocus }) {
     content: jsonRef.current || contentRef.current || '',
     onUpdate: ({ editor }) => {
       const md = editor.storage.markdown.getMarkdown()
-      contentRef.current = md
+      contentRef.current     = md
+      contentJsonRef.current = editor.getJSON()
       onSaveState?.('저장 안 됨')
       if (timerRef.current) clearTimeout(timerRef.current)
       timerRef.current = setTimeout(async () => {
         if (!docRef.current) return
         try {
-          await api.document.autosave(docRef.current.id, md)
+          await api.document.autosave(docRef.current.id, md, contentJsonRef.current)
           onSaveState?.('저장됨')
           onSaved?.()
         } catch (e) { console.error(e) }
@@ -97,6 +99,7 @@ function EditorPane({ docId, mode, onSaved, onSaveState, isFocused, onFocus }) {
       } else {
         editor.commands.setContent(contentRef.current, false)
       }
+      contentJsonRef.current = editor.getJSON()
       setTimeout(() => {
         if (!editor || editor.isDestroyed) return
         const docSize = editor.state.doc.content.size
@@ -112,11 +115,21 @@ function EditorPane({ docId, mode, onSaved, onSaveState, isFocused, onFocus }) {
     api.document.get(docId)
       .then(res => {
         docRef.current     = res.data
-        const c            = res.data.content ?? ''
-        contentRef.current = c
+        const md           = res.data.content ?? ''
+        const json         = res.data.content_json ?? null
         setDocTitle(res.data.title ?? '')
         onSaveState?.('저장됨')
-        editor.commands.setContent(c, false)
+        if (json) {
+          // 신규 문서: TipTap JSON 구조를 그대로 복원 (빈 줄/문단 보존)
+          editor.commands.setContent(json, false)
+          contentRef.current     = editor.storage.markdown.getMarkdown()
+          contentJsonRef.current = json
+        } else {
+          // 기존 문서: Markdown fallback
+          editor.commands.setContent(md, false)
+          contentRef.current     = md
+          contentJsonRef.current = editor.getJSON()
+        }
       })
       .catch(err => console.error('문서 로드 실패:', err))
   }, [docId, editor])
@@ -133,6 +146,7 @@ function EditorPane({ docId, mode, onSaved, onSaveState, isFocused, onFocus }) {
           docRef.current.title,
           contentRef.current,
           mode,
+          contentJsonRef.current,
         )
         onSaveState?.('저장됨')
         onSaved?.()
