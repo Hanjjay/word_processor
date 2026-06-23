@@ -15,14 +15,12 @@ import './MenuBar.css'
  *   onExportPdf  — PDF 내보내기
  *   onNewDoc     — 새 문서
  *   onNewProject — 새 프로젝트
- *   saveState    — '저장됨' | '저장 안 됨' | '저장 중'
  */
 function MenuBar({
   editor, mode, onModeChange,
   onSave, onSnapshot,
   onExportDocx, onExportPdf,
   onNewDoc, onNewProject,
-  saveState = '저장됨',
 }) {
   const [openMenu, setOpenMenu] = useState(null)
   const barRef = useRef(null)
@@ -171,13 +169,6 @@ function MenuBar({
             )}
           </div>
         ))}
-      </div>
-
-      {/* 오른쪽: 저장 상태 */}
-      <div className="menubar-right">
-        <span className={`save-state ${saveState === '저장됨' ? 'saved' : 'unsaved'}`}>
-          {saveState === '저장됨' ? '저장됨 ✓' : saveState}
-        </span>
       </div>
     </div>
   )
