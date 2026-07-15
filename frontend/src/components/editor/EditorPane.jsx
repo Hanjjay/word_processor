@@ -12,14 +12,16 @@ function EditorPane({ docId, mode, onSaved, onSaveState, isFocused, onFocus }) {
   const [docTitle,  setDocTitle]  = useState('')
   const [editorKey, setEditorKey] = useState(0)
 
-  const docRef          = useRef(null)
-  const contentRef      = useRef('')
-  const contentJsonRef  = useRef(null)   // TipTap JSON (구조 보존 저장용)
-  const jsonRef         = useRef(null)
-  const cursorRef       = useRef(null)
-  const prevMode        = useRef(mode)
-  const timerRef        = useRef(null)
-  const isModeSwitching = useRef(false)
+  const docRef             = useRef(null)
+  const contentRef         = useRef('')
+  const contentJsonRef     = useRef(null)   // TipTap JSON (구조 보존 저장용)
+  const jsonRef            = useRef(null)
+  const cursorRef          = useRef(null)
+  const prevMode           = useRef(mode)
+  const timerRef           = useRef(null)
+  const isModeSwitching    = useRef(false)
+  const isApplyingContent  = useRef(false)  // setContent()로 주입 중 → onUpdate/자동저장 무시
+  const loadSeqRef         = useRef(0)      // 요청별 seq: StrictMode 중복 호출·빠른 문서 전환 시 stale 응답 무시
 
   const isMarkdown = mode === '마크다운'
 
@@ -51,6 +53,7 @@ function EditorPane({ docId, mode, onSaved, onSaveState, isFocused, onFocus }) {
     enablePasteRules: isMarkdown,
     content: jsonRef.current || contentRef.current || '',
     onUpdate: ({ editor }) => {
+      if (isApplyingContent.current) return   // 문서 로드/모드 전환으로 인한 주입 — 사용자 편집 아님
       const md = editor.storage.markdown.getMarkdown()
       contentRef.current     = md
       contentJsonRef.current = editor.getJSON()
@@ -93,13 +96,18 @@ function EditorPane({ docId, mode, onSaved, onSaveState, isFocused, onFocus }) {
     if (!editor || !docId) return
     if (isModeSwitching.current) {
       isModeSwitching.current = false
-      if (jsonRef.current) {
-        editor.commands.setContent(jsonRef.current, false)
-        jsonRef.current = null
-      } else {
-        editor.commands.setContent(contentRef.current, false)
+      isApplyingContent.current = true
+      try {
+        if (jsonRef.current) {
+          editor.commands.setContent(jsonRef.current, { emitUpdate: false })
+          jsonRef.current = null
+        } else {
+          editor.commands.setContent(contentRef.current, { emitUpdate: false })
+        }
+        contentJsonRef.current = editor.getJSON()
+      } finally {
+        isApplyingContent.current = false
       }
-      contentJsonRef.current = editor.getJSON()
       setTimeout(() => {
         if (!editor || editor.isDestroyed) return
         const docSize = editor.state.doc.content.size
@@ -112,26 +120,41 @@ function EditorPane({ docId, mode, onSaved, onSaveState, isFocused, onFocus }) {
     }
     jsonRef.current   = null
     cursorRef.current = null
+    const seq = ++loadSeqRef.current   // 이 요청의 seq. 이후 더 최신 요청이 시작되면 무효화됨
     api.document.get(docId)
       .then(res => {
+        // stale 응답 차단: StrictMode 중복 호출 또는 그 사이 다른 문서로 전환된 경우 무시
+        if (seq !== loadSeqRef.current) return
+        if (res.data.id !== docId) return
+        if (editor.isDestroyed) return
+
         docRef.current     = res.data
         const md           = res.data.content ?? ''
         const json         = res.data.content_json ?? null
         setDocTitle(res.data.title ?? '')
         onSaveState?.('저장됨')
-        if (json) {
-          // 신규 문서: TipTap JSON 구조를 그대로 복원 (빈 줄/문단 보존)
-          editor.commands.setContent(json, false)
-          contentRef.current     = editor.storage.markdown.getMarkdown()
-          contentJsonRef.current = json
-        } else {
-          // 기존 문서: Markdown fallback
-          editor.commands.setContent(md, false)
-          contentRef.current     = md
-          contentJsonRef.current = editor.getJSON()
+
+        isApplyingContent.current = true
+        try {
+          if (json) {
+            // 신규 문서: TipTap JSON 구조를 그대로 복원 (빈 줄/문단 보존)
+            editor.commands.setContent(json, { emitUpdate: false })
+            contentRef.current     = editor.storage.markdown.getMarkdown()
+            contentJsonRef.current = json
+          } else {
+            // 기존 문서: Markdown fallback
+            editor.commands.setContent(md, { emitUpdate: false })
+            contentRef.current     = md
+            contentJsonRef.current = editor.getJSON()
+          }
+        } finally {
+          isApplyingContent.current = false
         }
       })
-      .catch(err => console.error('문서 로드 실패:', err))
+      .catch(err => {
+        if (seq !== loadSeqRef.current) return
+        console.error('문서 로드 실패:', err)
+      })
   }, [docId, editor])
 
   // 수동 저장
