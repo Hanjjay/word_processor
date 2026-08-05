@@ -26,7 +26,7 @@ function createEntry() {
   return {
     ydoc: new Y.Doc(),
     refCount: 0,
-    loaded: false,       // initial server content has been seeded into this Y.Doc
+    seeding: false,      // true only for the synchronous duration of seedIfEmpty's Y.Doc mutation
     pendingDestroy: null,
   }
 }
@@ -74,26 +74,25 @@ export function releaseYDoc(docId) {
 /**
  * Seed a freshly-created Y.Doc with a document's saved TipTap JSON, headless
  * (no live editor/view required). No-op if the Y.Doc already has content —
- * safe to call even if two callers race, since only one will see an empty
- * fragment.
+ * safe to call from every pane that opens a docId (including StrictMode's
+ * duplicate mount effect, and multiple panes opening the same never-before-
+ * seen doc at once), since only one caller will ever see an empty fragment.
+ *
+ * `entry.seeding` is set for the synchronous duration of the Y.Doc mutation
+ * so bound editors' onUpdate can tell this apart from a real user edit —
+ * the Collaboration sync plugin turns this Y.Doc mutation into a real PM
+ * transaction on every editor bound to it, onUpdate included.
  */
 export function seedIfEmpty(entry, json) {
   if (!json) return false
   const fragment = entry.ydoc.getXmlFragment('default')
   if (fragment.length > 0) return false
-  prosemirrorJSONToYXmlFragment(getDocSchema(), json, fragment)
-  return true
-}
-
-/**
- * Claim exactly one pane as the "seeder" responsible for populating a
- * newly-created Y.Doc from the server. Callers must call this synchronously
- * (before any await) so two panes opening the same never-before-seen docId
- * in the same tick don't both seed and duplicate content.
- */
-export function claimSeeder(entry) {
-  if (entry.loaded) return false
-  entry.loaded = true
+  entry.seeding = true
+  try {
+    prosemirrorJSONToYXmlFragment(getDocSchema(), json, fragment)
+  } finally {
+    entry.seeding = false
+  }
   return true
 }
 
