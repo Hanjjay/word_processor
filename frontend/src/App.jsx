@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import LSidebar from './components/lsidebar/LSidebar'
 import Editor  from './components/editor/Editor'
+import RSidebar from './components/rsidebar/RSidebar'
 //import MenuBar     from './components/menubar/MenuBar'       // ← 변경
 import './App.css'
 
@@ -86,6 +87,7 @@ function App() {
         onNewDoc={handleNewDoc}
         onNewProject={() => setRefreshKey(k => k + 1)}
       />
+      <RSidebar />
     </div>
   )
 }
