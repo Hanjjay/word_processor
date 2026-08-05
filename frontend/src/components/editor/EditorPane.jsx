@@ -9,7 +9,7 @@ import { api }       from '../../api'
 import { starterKitConfig } from '../../lib/editorSchema'
 import {
   peekYDoc, acquireYDoc, releaseYDoc, seedIfEmpty,
-  claimSeeder, setLegacySeedMarkdown, takeLegacySeedMarkdown,
+  setLegacySeedMarkdown, takeLegacySeedMarkdown,
 } from '../../lib/yjsRegistry'
 import './EditorPane.css'
 import './TipTapEditor.css'
@@ -73,6 +73,10 @@ function EditorPane({ docId, mode, onSaved, onSaveState, isFocused, onFocus }) {
     enableInputRules: isMarkdown,
     enablePasteRules: isMarkdown,
     onUpdate: ({ editor }) => {
+      // Y.Doc이 서버 콘텐츠로 시딩되는 동안 발생하는 sync-plugin 트랜잭션 —
+      // 사용자 입력이 아니므로 dirty 처리도 autosave 예약도 하지 않는다.
+      if (entry?.seeding) return
+
       setSaveState('저장 안 됨')
       onSaveState?.('저장 안 됨')
       window.dispatchEvent(new CustomEvent('doc-savestate', {
@@ -136,11 +140,11 @@ function EditorPane({ docId, mode, onSaved, onSaveState, isFocused, onFocus }) {
       setEditorKey(k => k + 1)
     }
 
-    acquireYDoc(docId) // refCount++ for this pane (entry itself came from peekYDoc in render, above)
+    // 새 docId의 데이터가 아직 로드되지 않은 상태 — 이전 docId의 문서 객체로
+    // autosave가 잘못 나가지 않도록(온데이트 콜백은 docRef.current.id를 씀) 즉시 비운다.
+    docRef.current = null
 
-    // 이 docId를 아무도 연 적 없으면 이 Pane이 시더(seeder)가 된다.
-    // await 이전에 동기적으로 claim해야 동시에 열리는 다른 Pane과 경합하지 않는다.
-    const isSeeder = claimSeeder(entry)
+    acquireYDoc(docId) // refCount++ for this pane (entry itself came from peekYDoc in render, above)
 
     let cancelled = false
     api.document.get(docId)
@@ -153,15 +157,17 @@ function EditorPane({ docId, mode, onSaved, onSaveState, isFocused, onFocus }) {
         setSaveState('저장됨')
         onSaveState?.('저장됨')
 
-        if (isSeeder) {
-          const json = res.data.content_json ?? null
-          if (json) {
-            seedIfEmpty(entry, json)
-          } else {
-            // 구버전 문서(content_json 없음): 마크다운 파싱은 실제 editor 인스턴스가
-            // 필요하므로, editor가 마운트되면 그때 setContent로 1회 시딩한다.
-            setLegacySeedMarkdown(entry, res.data.content ?? '')
-          }
+        // seedIfEmpty/setLegacySeedMarkdown는 그 자체로 멱등(fragment가 이미 채워져
+        // 있으면 no-op)이므로, StrictMode의 중복 mount나 같은 docId를 동시에 여는
+        // 여러 Pane이 모두 여기 도달해도 안전하다 — "seeder를 한 곳만 정한다"는
+        // 별도 조율 없이 먼저 도착한 응답이 그대로 시딩한다.
+        const json = res.data.content_json ?? null
+        if (json) {
+          seedIfEmpty(entry, json)
+        } else {
+          // 구버전 문서(content_json 없음): 마크다운 파싱은 실제 editor 인스턴스가
+          // 필요하므로, editor가 마운트되면 그때 setContent로 1회 시딩한다.
+          setLegacySeedMarkdown(entry, res.data.content ?? '')
         }
       })
       .catch(err => console.error('문서 로드 실패:', err))
