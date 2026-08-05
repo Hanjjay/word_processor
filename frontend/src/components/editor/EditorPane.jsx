@@ -49,7 +49,7 @@ function EditorPane({ docId, mode, onSaved, onSaveState, isFocused, onFocus }) {
     extensions: [
       StarterKit.configure({
         ...starterKitConfig,
-        history: false, // undo/redo는 Collaboration extension이 Y.UndoManager로 관리
+        undoRedo: false, // undo/redo는 Collaboration extension이 Y.UndoManager로 관리 (tiptap v3: history → undoRedo)
       }),
       ...(entry ? [Collaboration.configure({ document: entry.ydoc })] : []),
       Markdown.configure({
