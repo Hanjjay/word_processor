@@ -37,11 +37,11 @@ function EditorPane({ docId, mode, onSaved, onSaveState, isFocused, onFocus }) {
   const docRef          = useRef(null)
   const contentRef      = useRef('')
   const contentJsonRef  = useRef(null)   // TipTap JSON (구조 보존 저장용)
+  const jsonRef         = useRef(null)
   const cursorRef       = useRef(null)
-  const prevModeRef     = useRef(mode)
-  const prevEntryRef    = useRef(entry) // 직전 렌더의 Y.Doc entry — 바뀌면 editor를 새 entry에 rebind
+  const prevMode        = useRef(mode)
   const timerRef        = useRef(null)
-  const isFocusedRef    = useRef(isFocused)
+  const isModeSwitching = useRef(false)
 
   useEffect(() => { isFocusedRef.current = isFocused }, [isFocused])
 
@@ -149,8 +149,9 @@ function EditorPane({ docId, mode, onSaved, onSaveState, isFocused, onFocus }) {
     let cancelled = false
     api.document.get(docId)
       .then(res => {
-        if (cancelled) return
-        docRef.current = res.data
+        docRef.current     = res.data
+        const md           = res.data.content ?? ''
+        const json         = res.data.content_json ?? null
         setDocTitle(res.data.title ?? '')
         contentRef.current     = res.data.content ?? ''
         contentJsonRef.current = res.data.content_json ?? null
@@ -171,33 +172,7 @@ function EditorPane({ docId, mode, onSaved, onSaveState, isFocused, onFocus }) {
         }
       })
       .catch(err => console.error('문서 로드 실패:', err))
-
-    return () => {
-      cancelled = true
-      releaseYDoc(docId)
-    }
-  }, [docId, entry])
-
-  // editor remount 후: 구버전 마크다운 시딩(필요시) + 커서 위치 복원
-  useEffect(() => {
-    if (!editor || editor.isDestroyed || !entry) return
-
-    const legacyMd = takeLegacySeedMarkdown(entry)
-    if (legacyMd != null && entry.ydoc.getXmlFragment('default').length === 0) {
-      editor.commands.setContent(legacyMd, false)
-    }
-
-    const pos = cursorRef.current
-    if (pos != null) {
-      setTimeout(() => {
-        if (!editor || editor.isDestroyed) return
-        const docSize = editor.state.doc.content.size
-        editor.commands.focus()
-        try { editor.commands.setTextSelection(Math.min(pos, docSize - 1)) }
-        catch { editor.commands.focus('end') }
-      }, 0)
-    }
-  }, [editor, entry])
+  }, [docId, editor])
 
   // 동일 docId 분할 패널 간 저장 상태 동기화
   useEffect(() => {

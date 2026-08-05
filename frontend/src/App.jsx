@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
-import Sidebar from './components/sidebar/Sidebar'
+import LSidebar from './components/lsidebar/LSidebar'
 import Editor  from './components/editor/Editor'
+import RSidebar from './components/rsidebar/RSidebar'
 //import MenuBar     from './components/menubar/MenuBar'       // ← 변경
 import './App.css'
 
@@ -26,13 +27,13 @@ function App() {
     setActivePaneId(INITIAL_PANES[0].id)
   }
 
-  // Sidebar가 트리를 로드하면 App에도 공유
+  // LSidebar가 트리를 로드하면 App에도 공유
   const handleTreeLoaded = useCallback((loadedTree) => {
     setTree(loadedTree)
   }, [])
 
-  // 새 문서 생성 — Sidebar 내부 함수를 직접 호출하기 어려우므로
-  // refreshKey 증가로 Sidebar 측에서 처리
+  // 새 문서 생성 — LSidebar 내부 함수를 직접 호출하기 어려우므로
+  // refreshKey 증가로 LSidebar 측에서 처리
   const handleNewDoc = useCallback(() => {
     setRefreshKey(k => k + 1)
   }, [])
@@ -66,7 +67,7 @@ function App() {
 
   return (
     <div className="app-layout">
-      <Sidebar
+      <LSidebar
         currentProject={currentProject}
         onProjectChange={handleProjectChange}
         onDocSelect={handleDocSelect}
@@ -86,6 +87,7 @@ function App() {
         onNewDoc={handleNewDoc}
         onNewProject={() => setRefreshKey(k => k + 1)}
       />
+      <RSidebar />
     </div>
   )
 }
