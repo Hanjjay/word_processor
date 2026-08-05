@@ -1,37 +1,57 @@
 import { useState, useEffect, useRef } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
-import StarterKit   from '@tiptap/starter-kit'
-import Placeholder  from '@tiptap/extension-placeholder'
-import Typography   from '@tiptap/extension-typography'
-import { Markdown } from 'tiptap-markdown'
-import { api }      from '../../api'
+import StarterKit    from '@tiptap/starter-kit'
+import Placeholder   from '@tiptap/extension-placeholder'
+import Typography    from '@tiptap/extension-typography'
+import Collaboration from '@tiptap/extension-collaboration'
+import { Markdown }  from 'tiptap-markdown'
+import { api }       from '../../api'
+import { starterKitConfig } from '../../lib/editorSchema'
+import {
+  peekYDoc, acquireYDoc, releaseYDoc, seedIfEmpty,
+  claimSeeder, setLegacySeedMarkdown, takeLegacySeedMarkdown,
+} from '../../lib/yjsRegistry'
 import './EditorPane.css'
 import './TipTapEditor.css'
 
+/**
+ * 같은 docId를 여는 모든 Pane는 yjsRegistry의 같은 Y.Doc을 공유한다 (Single
+ * Source of Truth).각 Pane은 TipTap Collaboration Extension으로 그 Y.Doc에
+ * 바인딩된 자신만의 EditorView를 갖는다 — 문서는 하나, 뷰는 여러 개.
+ * 한쪽에서 입력하면 Yjs 트랜잭션이 공유 Y.Doc을 갱신하고, 바인딩된 다른
+ * Pane의 뷰가 즉시 재렌더링된다. Cursor/Selection/Scroll은 뷰(EditorView)
+ * 소유라서 자동으로 Pane별 독립 유지된다.
+ */
 function EditorPane({ docId, mode, onSaved, onSaveState, isFocused, onFocus }) {
   const [docTitle,  setDocTitle]  = useState('')
   const [editorKey, setEditorKey] = useState(0)
   const [saveState, setSaveState] = useState('저장됨')
 
-  const docRef             = useRef(null)
-  const contentRef         = useRef('')
-  const contentJsonRef     = useRef(null)   // TipTap JSON (구조 보존 저장용)
-  const jsonRef            = useRef(null)
-  const cursorRef          = useRef(null)
-  const prevMode           = useRef(mode)
-  const timerRef           = useRef(null)
-  const isModeSwitching    = useRef(false)
-  const isApplyingContent  = useRef(false)  // setContent()로 주입 중 → onUpdate/자동저장 무시
-  const loadSeqRef         = useRef(0)      // 요청별 seq: StrictMode 중복 호출·빠른 문서 전환 시 stale 응답 무시
-
   const isMarkdown = mode === '마크다운'
+
+  // side-effect-free — safe to call every render (StrictMode double-render 포함),
+  // useEditor가 항상 유효한 Y.Doc을 extensions에 넘길 수 있게 보장한다.
+  // 실제 refCount 증감(acquire/release)은 아래 docId effect에서만 일어난다.
+  const entry = docId ? peekYDoc(docId) : null
+
+  const docRef          = useRef(null)
+  const contentRef      = useRef('')
+  const contentJsonRef  = useRef(null)   // TipTap JSON (구조 보존 저장용)
+  const jsonRef         = useRef(null)
+  const cursorRef       = useRef(null)
+  const prevMode        = useRef(mode)
+  const timerRef        = useRef(null)
+  const isModeSwitching = useRef(false)
+
+  useEffect(() => { isFocusedRef.current = isFocused }, [isFocused])
 
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        heading:   { levels: [1, 2, 3, 4] },
-        codeBlock: { languageClassPrefix: 'language-' },
+        ...starterKitConfig,
+        undoRedo: false, // undo/redo는 Collaboration extension이 Y.UndoManager로 관리 (tiptap v3: history → undoRedo)
       }),
+      ...(entry ? [Collaboration.configure({ document: entry.ydoc })] : []),
       Markdown.configure({
         html:                false,
         tightLists:          true,
@@ -52,9 +72,7 @@ function EditorPane({ docId, mode, onSaved, onSaveState, isFocused, onFocus }) {
     ],
     enableInputRules: isMarkdown,
     enablePasteRules: isMarkdown,
-    content: jsonRef.current || contentRef.current || '',
     onUpdate: ({ editor }) => {
-      if (isApplyingContent.current) return   // 문서 로드/모드 전환으로 인한 주입 — 사용자 편집 아님
       const md = editor.storage.markdown.getMarkdown()
       contentRef.current     = md
       contentJsonRef.current = editor.getJSON()
@@ -63,11 +81,21 @@ function EditorPane({ docId, mode, onSaved, onSaveState, isFocused, onFocus }) {
       window.dispatchEvent(new CustomEvent('doc-savestate', {
         detail: { docId: docRef.current?.id, state: '저장 안 됨' }
       }))
+
+      // 공유 Y.Doc이라 모든 Pane에서 onUpdate가 뜬다 — 실제 autosave 네트워크
+      // 호출은 지금 포커스된(=사용자가 입력 중인) Pane 하나만 담당한다.
+      if (!isFocusedRef.current) return
+
+      const md   = editor.storage.markdown.getMarkdown()
+      const json = editor.getJSON()
+      contentRef.current     = md
+      contentJsonRef.current = json
+
       if (timerRef.current) clearTimeout(timerRef.current)
       timerRef.current = setTimeout(async () => {
         if (!docRef.current) return
         try {
-          await api.document.autosave(docRef.current.id, md, contentJsonRef.current)
+          await api.document.autosave(docRef.current.id, md, json)
           setSaveState('저장됨')
           onSaveState?.('저장됨')
           window.dispatchEvent(new CustomEvent('doc-savestate', {
@@ -86,37 +114,28 @@ function EditorPane({ docId, mode, onSaved, onSaveState, isFocused, onFocus }) {
     },
   }, [editorKey])
 
-  // mode 변경
+  // mode 변경 (일반 ↔ 마크다운) — 내용은 Y.Doc에 남아있으므로 커서 위치만 보존하고 remount
   useEffect(() => {
-    if (prevMode.current === mode) return
-    prevMode.current = mode
+    if (prevModeRef.current === mode) return
+    prevModeRef.current = mode
     if (editor && !editor.isDestroyed) {
-      contentRef.current = editor.storage.markdown.getMarkdown()
-      jsonRef.current    = editor.getJSON()
-      const { from }     = editor.state.selection
-      cursorRef.current  = from
+      cursorRef.current = editor.state.selection.from
     }
-    isModeSwitching.current = true
     setEditorKey(k => k + 1)
   }, [mode, editor])
 
-  // 문서 로드
+  // 문서 전환 — docId별 공유 Y.Doc을 얻고(refcount++), 처음 여는 문서면 서버 콘텐츠로 시딩
   useEffect(() => {
     if (!editor || !docId) return
     if (isModeSwitching.current) {
       isModeSwitching.current = false
-      isApplyingContent.current = true
-      try {
-        if (jsonRef.current) {
-          editor.commands.setContent(jsonRef.current, { emitUpdate: false })
-          jsonRef.current = null
-        } else {
-          editor.commands.setContent(contentRef.current, { emitUpdate: false })
-        }
-        contentJsonRef.current = editor.getJSON()
-      } finally {
-        isApplyingContent.current = false
+      if (jsonRef.current) {
+        editor.commands.setContent(jsonRef.current, false)
+        jsonRef.current = null
+      } else {
+        editor.commands.setContent(contentRef.current, false)
       }
+      contentJsonRef.current = editor.getJSON()
       setTimeout(() => {
         if (!editor || editor.isDestroyed) return
         const docSize = editor.state.doc.content.size
@@ -129,42 +148,29 @@ function EditorPane({ docId, mode, onSaved, onSaveState, isFocused, onFocus }) {
     }
     jsonRef.current   = null
     cursorRef.current = null
-    const seq = ++loadSeqRef.current   // 이 요청의 seq. 이후 더 최신 요청이 시작되면 무효화됨
     api.document.get(docId)
       .then(res => {
-        // stale 응답 차단: StrictMode 중복 호출 또는 그 사이 다른 문서로 전환된 경우 무시
-        if (seq !== loadSeqRef.current) return
-        if (res.data.id !== docId) return
-        if (editor.isDestroyed) return
-
         docRef.current     = res.data
         const md           = res.data.content ?? ''
         const json         = res.data.content_json ?? null
         setDocTitle(res.data.title ?? '')
+        contentRef.current     = res.data.content ?? ''
+        contentJsonRef.current = res.data.content_json ?? null
         setSaveState('저장됨')
         onSaveState?.('저장됨')
-
-        isApplyingContent.current = true
-        try {
-          if (json) {
-            // 신규 문서: TipTap JSON 구조를 그대로 복원 (빈 줄/문단 보존)
-            editor.commands.setContent(json, { emitUpdate: false })
-            contentRef.current     = editor.storage.markdown.getMarkdown()
-            contentJsonRef.current = json
-          } else {
-            // 기존 문서: Markdown fallback
-            editor.commands.setContent(md, { emitUpdate: false })
-            contentRef.current     = md
-            contentJsonRef.current = editor.getJSON()
-          }
-        } finally {
-          isApplyingContent.current = false
+        if (json) {
+          // 신규 문서: TipTap JSON 구조를 그대로 복원 (빈 줄/문단 보존)
+          editor.commands.setContent(json, false)
+          contentRef.current     = editor.storage.markdown.getMarkdown()
+          contentJsonRef.current = json
+        } else {
+          // 기존 문서: Markdown fallback
+          editor.commands.setContent(md, false)
+          contentRef.current     = md
+          contentJsonRef.current = editor.getJSON()
         }
       })
-      .catch(err => {
-        if (seq !== loadSeqRef.current) return
-        console.error('문서 로드 실패:', err)
-      })
+      .catch(err => console.error('문서 로드 실패:', err))
   }, [docId, editor])
 
   // 동일 docId 분할 패널 간 저장 상태 동기화
