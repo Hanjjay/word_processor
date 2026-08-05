@@ -11,6 +11,7 @@ import './TipTapEditor.css'
 function EditorPane({ docId, mode, onSaved, onSaveState, isFocused, onFocus }) {
   const [docTitle,  setDocTitle]  = useState('')
   const [editorKey, setEditorKey] = useState(0)
+  const [saveState, setSaveState] = useState('저장됨')
 
   const docRef             = useRef(null)
   const contentRef         = useRef('')
@@ -57,13 +58,21 @@ function EditorPane({ docId, mode, onSaved, onSaveState, isFocused, onFocus }) {
       const md = editor.storage.markdown.getMarkdown()
       contentRef.current     = md
       contentJsonRef.current = editor.getJSON()
+      setSaveState('저장 안 됨')
       onSaveState?.('저장 안 됨')
+      window.dispatchEvent(new CustomEvent('doc-savestate', {
+        detail: { docId: docRef.current?.id, state: '저장 안 됨' }
+      }))
       if (timerRef.current) clearTimeout(timerRef.current)
       timerRef.current = setTimeout(async () => {
         if (!docRef.current) return
         try {
           await api.document.autosave(docRef.current.id, md, contentJsonRef.current)
+          setSaveState('저장됨')
           onSaveState?.('저장됨')
+          window.dispatchEvent(new CustomEvent('doc-savestate', {
+            detail: { docId: docRef.current?.id, state: '저장됨' }
+          }))
           onSaved?.()
         } catch (e) { console.error(e) }
       }, 3000)
@@ -132,6 +141,7 @@ function EditorPane({ docId, mode, onSaved, onSaveState, isFocused, onFocus }) {
         const md           = res.data.content ?? ''
         const json         = res.data.content_json ?? null
         setDocTitle(res.data.title ?? '')
+        setSaveState('저장됨')
         onSaveState?.('저장됨')
 
         isApplyingContent.current = true
@@ -157,12 +167,24 @@ function EditorPane({ docId, mode, onSaved, onSaveState, isFocused, onFocus }) {
       })
   }, [docId, editor])
 
+  // 동일 docId 분할 패널 간 저장 상태 동기화
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.detail.docId && docRef.current?.id === e.detail.docId) {
+        setSaveState(e.detail.state)
+      }
+    }
+    window.addEventListener('doc-savestate', handler)
+    return () => window.removeEventListener('doc-savestate', handler)
+  }, [])
+
   // 수동 저장
   useEffect(() => {
     if (!isFocused) return
     window.__activePaneSave = async () => {
       if (!docRef.current) return
       try {
+        setSaveState('저장 중...')
         onSaveState?.('저장 중...')
         await api.document.save(
           docRef.current.id,
@@ -171,10 +193,15 @@ function EditorPane({ docId, mode, onSaved, onSaveState, isFocused, onFocus }) {
           mode,
           contentJsonRef.current,
         )
+        setSaveState('저장됨')
         onSaveState?.('저장됨')
+        window.dispatchEvent(new CustomEvent('doc-savestate', {
+          detail: { docId: docRef.current?.id, state: '저장됨' }
+        }))
         onSaved?.()
       } catch (e) {
         console.error(e)
+        setSaveState('저장 실패')
         onSaveState?.('저장 실패')
       }
     }
@@ -192,6 +219,9 @@ function EditorPane({ docId, mode, onSaved, onSaveState, isFocused, onFocus }) {
     <div className={`epane ${isFocused ? 'focused' : ''}`} onClick={onFocus}>
       <div className="epane-header">
         <span className="epane-title">{docTitle || '제목 없음'}</span>
+        <span className={`epane-save ${saveState === '저장됨' ? 'saved' : 'unsaved'}`}>
+          {saveState === '저장됨' ? '저장됨 ✓' : saveState === '저장 안 됨' ? '수정됨 ●' : saveState}
+        </span>
       </div>
       <div className="epane-canvas">
         <div className="a4-paper">

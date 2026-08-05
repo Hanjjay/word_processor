@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Fragment } from 'react'
 import { useDroppable } from '@dnd-kit/core'
+import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels'
 import MenuBar    from '../menubar/MenuBar'
 import Breadcrumb from '../breadcrumb/Breadcrumb'
 import Toolbar    from '../toolbar/Toolbar'
@@ -11,25 +12,28 @@ import './EditorDropZone.css'
 /**
  * Editor
  * - 제목 입력창 없음 (사이드바에서 관리)
- * - 분할 화면 지원
+ * - pane 배열 기반 좌우 분할 화면 지원 (1차: 최대 2분할)
  */
 function Editor({
-  docId, project, tree,
+  panes, activePaneId, onPaneFocus, onSplit, onClosePane,
+  project, tree,
   onDocSaved, onNewDoc, onNewProject,
-  splitMode, setSplitMode,
-  docId2, setDocId2,
-  focusedPane, setFocusedPane,
   isDragging,
 }) {
   const [mode, setMode] = useState('일반')
 
   const handleSaved = useCallback(() => onDocSaved?.(), [onDocSaved])
 
+  const activePane = panes.find(p => p.id === activePaneId) ?? panes[0]
+  const docId      = activePane?.docId ?? null
+  const splitMode  = panes.length > 1
+
   const toggleSplit = () => {
-    setSplitMode(p => {
-      if (p) { setDocId2(null); setFocusedPane(1) }
-      return !p
-    })
+    if (splitMode) {
+      onClosePane?.(panes[panes.length - 1].id)
+    } else {
+      onSplit?.()
+    }
   }
 
   // F3: 일반 ↔ 마크다운
@@ -86,7 +90,7 @@ function Editor({
 
       <Breadcrumb
         project={project}
-        docId={focusedPane === 1 ? docId : docId2}
+        docId={docId}
         tree={tree}
       />
 
@@ -100,7 +104,7 @@ function Editor({
 
       {/* ★ 제목 입력창 없음 */}
 
-      {!docId ? (
+      {!docId && !splitMode ? (
         <div className="editor-empty">
           <div className="editor-empty-inner">
             <p>왼쪽 트리에서 문서를 선택하세요</p>
@@ -110,31 +114,25 @@ function Editor({
           </div>
         </div>
       ) : (
-        <div className={`editor-panes ${splitMode ? 'split' : ''}`}>
-
-          <DroppablePane paneId="pane1" isDragging={isDragging}>
-            <EditorPane
-              docId={docId}
-              mode={mode}
-              onSaved={handleSaved}
-              isFocused={focusedPane === 1}
-              onFocus={() => setFocusedPane(1)}
-            />
-          </DroppablePane>
-
-          {splitMode && <div className="editor-split-divider" />}
-
-          {splitMode && (
-            <DroppablePane paneId="pane2" isDragging={isDragging}>
-              <EditorPane
-                docId={docId2}
-                mode={mode}
-                onSaved={handleSaved}
-                isFocused={focusedPane === 2}
-                onFocus={() => setFocusedPane(2)}
-              />
-            </DroppablePane>
-          )}
+        <div className="editor-panes">
+          <PanelGroup orientation="horizontal">
+            {panes.map((pane, idx) => (
+              <Fragment key={pane.id}>
+                {idx > 0 && <PanelResizeHandle className="editor-resize-handle" />}
+                <Panel minSize="20%">
+                  <DroppablePane paneId={pane.id} isDragging={isDragging}>
+                    <EditorPane
+                      docId={pane.docId}
+                      mode={mode}
+                      onSaved={handleSaved}
+                      isFocused={pane.id === activePaneId}
+                      onFocus={() => onPaneFocus?.(pane.id)}
+                    />
+                  </DroppablePane>
+                </Panel>
+              </Fragment>
+            ))}
+          </PanelGroup>
         </div>
       )}
     </div>
@@ -157,7 +155,7 @@ function DroppablePane({ paneId, isDragging, children }) {
       {isDragging && (
         <div className="drop-hint">
           <span>📄</span>
-          <span>{paneId === 'pane2' ? '패널 2에서 열기' : '이 패널에서 열기'}</span>
+          <span>이 패널에서 열기</span>
         </div>
       )}
       {children}
