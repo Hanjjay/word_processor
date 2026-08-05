@@ -2,9 +2,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { api } from '../../api'
 import ProjectSelector from './ProjectSelector'
 import ProjectTree     from './ProjectTree'
-import './Sidebar.css'
+import './LSidebar.css'
 
-function Sidebar({
+function LSidebar({
   currentProject, onProjectChange,
   onDocSelect, currentDocId,
   refreshKey, onTreeLoaded,
@@ -126,7 +126,7 @@ function Sidebar({
   }
 
   return (
-    <aside className="sidebar">
+    <aside className="lsidebar">
       <ProjectSelector
         projects={projects}
         currentProject={currentProject}
@@ -136,15 +136,15 @@ function Sidebar({
         onDelete={handleDeleteProject}
       />
 
-      <div className="sidebar-tree-wrap">
+      <div className="lsidebar-tree-wrap">
         {!currentProject ? (
-          <div className="sidebar-empty">
+          <div className="lsidebar-empty">
             <p>프로젝트를 선택하거나</p>
             <p>새로 만들어주세요</p>
             <button onClick={handleCreateProject}>+ 새 프로젝트</button>
           </div>
         ) : loading ? (
-          <div className="sidebar-loading">불러오는 중...</div>
+          <div className="lsidebar-loading">불러오는 중...</div>
         ) : (
           <ProjectTree
             tree={tree}
@@ -164,4 +164,4 @@ function Sidebar({
   )
 }
 
-export default Sidebar
+export default LSidebar

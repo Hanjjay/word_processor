@@ -1,7 +1,7 @@
 /* ════════════════════════════════════════
-   Sidebar.css
+   LSidebar.css
    ════════════════════════════════════════ */
-.sidebar {
+.lsidebar {
   width: 240px;
   min-width: 180px;
   max-width: 360px;
@@ -13,22 +13,22 @@
   flex-shrink: 0;
 }
 
-.sidebar-tree-wrap {
+.lsidebar-tree-wrap {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
 }
-.sidebar-tree-wrap::-webkit-scrollbar { width: 4px; }
-.sidebar-tree-wrap::-webkit-scrollbar-thumb { background: #3c3c3c; border-radius: 2px; }
+.lsidebar-tree-wrap::-webkit-scrollbar { width: 4px; }
+.lsidebar-tree-wrap::-webkit-scrollbar-thumb { background: #3c3c3c; border-radius: 2px; }
 
-.sidebar-empty {
+.lsidebar-empty {
   padding: 32px 16px;
   text-align: center;
   color: #555;
   font-size: 13px;
   line-height: 1.8;
 }
-.sidebar-empty button {
+.lsidebar-empty button {
   margin-top: 12px;
   padding: 6px 14px;
   background: #5b4fcf;
@@ -38,9 +38,9 @@
   cursor: pointer;
   font-size: 12px;
 }
-.sidebar-empty button:hover { background: #4a3fb5; }
+.lsidebar-empty button:hover { background: #4a3fb5; }
 
-.sidebar-loading {
+.lsidebar-loading {
   padding: 24px 16px;
   color: #555;
   font-size: 12px;
