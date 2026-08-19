@@ -38,12 +38,35 @@
   max-width: 70%;
 }
 
+.epane-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
 .epane-save {
   font-size: 11px;
   flex-shrink: 0;
 }
 .epane-save.saved   { color: #6dbf8a; }
 .epane-save.unsaved { color: #e5a44b; }
+
+/* ── Pane 닫기 버튼 ── */
+.epane-close {
+  background: transparent;
+  border: none;
+  color: #888;
+  font-size: 15px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 3px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.epane-close:hover { background: #3c3c3c; color: #f97583; }
+
+.epane-header-empty { justify-content: flex-end; }
 
 /* ── 스크롤 영역 ── */
 .epane-canvas {
@@ -60,6 +83,14 @@
 .epane-canvas::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
 
 /* ── 빈 상태 ── */
+.epane-blank {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+}
+
 .epane-empty {
   flex: 1;
   display: flex;

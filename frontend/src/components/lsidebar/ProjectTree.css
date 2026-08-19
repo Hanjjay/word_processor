@@ -16,6 +16,13 @@
 }
 .pt-section-head:hover { background: #2a2d2e; }
 
+/* ── Drag 중 Drop 대상 폴더 강조 (2단계) ── */
+.pt-section-head.drop-target {
+  background: rgba(74, 158, 255, 0.14);
+  outline: 1.5px solid #4a9eff;
+  outline-offset: -1.5px;
+}
+
 /* depth별 배경 구분 */
 .pt-section-head.depth-0 { color: #cccccc; font-weight: 500; }
 .pt-section-head.depth-1 { color: #bbbbbb; }
@@ -158,3 +165,38 @@
 }
 .pt-doc:hover .pt-doc-delete { display: block; }
 .pt-doc-delete:hover { color: #f97583; }
+
+/* ── Drag 중 Drop 위치 삽입선 (7단계: before/after) ── */
+.pt-doc.drop-line-before::before,
+.pt-section-head.drop-line-before::before,
+.pt-doc.drop-line-after::after,
+.pt-section-head.drop-line-after::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  background: #4a9eff;
+  border-radius: 1px;
+  pointer-events: none;
+}
+.pt-doc.drop-line-before::before,
+.pt-section-head.drop-line-before::before { top: -1px; }
+.pt-doc.drop-line-after::after,
+.pt-section-head.drop-line-after::after { bottom: -1px; }
+
+/* ── Drag 중 미리보기 (DragOverlay) ── */
+.pt-drag-overlay {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  background: #094771;
+  color: #ffffff;
+  font-size: 12px;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  cursor: grabbing;
+  white-space: nowrap;
+}

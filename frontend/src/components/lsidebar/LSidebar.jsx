@@ -117,6 +117,63 @@ function LSidebar({
     } catch (e) { alert(e.message) }
   }
 
+  // ── 6단계: 파일 → 폴더 이동 — 기존 Backend API 사용 (PATCH /document/{id}/move) ──
+  // Optimistic Update 없음: 로컬 트리를 먼저 바꾸지 않고, API 성공 후 refreshTree()로
+  // 서버 원본을 다시 받아와 반영. 실패하면 setTree를 아예 호출하지 않으므로
+  // 화면의 tree는 이동 시도 전 상태 그대로 유지됨.
+  const handleMoveDocument = async ({ itemId, sourceParentId, targetParentId }) => {
+    if (sourceParentId === targetParentId) return // 의미 없는 요청은 API 호출 자체를 안 함
+    try {
+      await api.document.move(itemId, targetParentId)
+      await refreshTree()
+    } catch (e) {
+      alert('문서 이동 실패: ' + e.message)
+    }
+  }
+
+  // ── 6단계: 폴더 → 폴더 이동 — 기존 Backend API 사용 (PATCH /section/{id}/move) ──
+  // cycle 검증은 ProjectTree.jsx에서 호출 전 1차로 막고, Backend(features/section.py)에서도
+  // 같은 검증을 한 번 더 수행 — 둘 중 하나라도 걸리면 상태 변경 없음.
+  const handleMoveSection = async ({ itemId, sourceParentId, targetParentId }) => {
+    if (sourceParentId === targetParentId) return
+    try {
+      await api.section.move(itemId, targetParentId)
+      await refreshTree()
+    } catch (e) {
+      alert('폴더 이동 실패: ' + e.message)
+    }
+  }
+
+  // ── 7단계: 문서 before/after — 필요하면 부모 이동(move) 후 순서 저장(reorder) ──
+  // plan.siblingIds는 ProjectTree.jsx의 buildDropPlan()이 이미 "드래그 대상을 제외했다가
+  // targetIndex 위치에 다시 끼워 넣은" 최종 순서로 계산해둔 배열 — 여기서는 그대로 전달만 함.
+  const handleReorderDocuments = async ({ activeId, sourceParentId, targetParentId, siblingIds }) => {
+    try {
+      if (sourceParentId !== targetParentId) {
+        await api.document.move(activeId, targetParentId) // 부모가 다르면 먼저 이동
+      }
+      await api.document.reorder(siblingIds) // 이동 후(또는 같은 부모 안) 최종 순서 저장
+      await refreshTree()
+    } catch (e) {
+      alert('문서 순서 변경 실패: ' + e.message)
+    }
+  }
+
+  // ── 7단계: 폴더 before/after — 필요하면 부모 이동(move) 후 순서 저장(reorder) ──
+  // cycle 검증은 ProjectTree.jsx(buildDropPlan + isDropPlanValid)에서 먼저 막고,
+  // Backend(features/section.py: move_section)에서도 동일 검증을 한 번 더 수행.
+  const handleReorderSections = async ({ activeId, sourceParentId, targetParentId, siblingIds }) => {
+    try {
+      if (sourceParentId !== targetParentId) {
+        await api.section.move(activeId, targetParentId)
+      }
+      await api.section.reorder(siblingIds)
+      await refreshTree()
+    } catch (e) {
+      alert('폴더 순서 변경 실패: ' + e.message)
+    }
+  }
+
   const handleDeleteDocument = async (docId) => {
     if (!window.confirm('문서를 삭제할까요?')) return
     try {
@@ -156,6 +213,10 @@ function LSidebar({
             onCreateDocument={handleCreateDocument}
             onDeleteDocument={handleDeleteDocument}
             onRefresh={refreshTree}   // ★ 문서 이름 변경 후 새로고침
+            onMoveDocument={handleMoveDocument}
+            onMoveSection={handleMoveSection}
+            onReorderDocuments={handleReorderDocuments}
+            onReorderSections={handleReorderSections}
           />
         )}
       </div>

@@ -48,8 +48,11 @@ def update_section(section_id: int, body: UpdateSectionBody):
 
 @router.patch("/{section_id}/move")
 def move_section(section_id: int, body: MoveSectionBody):
-    """섹션 이동 (다른 부모 아래로)"""
-    section = sect_feat.move_section(section_id, body.new_parent_id)
+    """섹션 이동 (다른 부모 아래로) — cycle 발생 시 400 반환"""
+    try:
+        section = sect_feat.move_section(section_id, body.new_parent_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return {"status": "ok", "data": section}
 
 

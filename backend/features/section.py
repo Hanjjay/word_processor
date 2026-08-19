@@ -82,7 +82,13 @@ def update_section(section_id: int, name: str = None,
 
 
 def move_section(section_id: int, new_parent_id: int = None) -> dict | None:
-    """섹션을 다른 부모 아래로 이동"""
+    """섹션을 다른 부모 아래로 이동 (자기 자신·자신의 하위로 이동하는 cycle은 차단)"""
+    if new_parent_id is not None:
+        if new_parent_id == section_id:
+            raise ValueError("폴더를 자기 자신 아래로 이동할 수 없습니다.")
+        if _is_descendant(new_parent_id, section_id):
+            raise ValueError("폴더를 자신의 하위 폴더 아래로 이동할 수 없습니다.")
+
     conn = get_connection()
     conn.execute(
         "UPDATE sections SET parent_id=? WHERE id=?",
@@ -91,6 +97,24 @@ def move_section(section_id: int, new_parent_id: int = None) -> dict | None:
     conn.commit()
     conn.close()
     return get_section(section_id)
+
+
+def _is_descendant(candidate_id: int, ancestor_id: int) -> bool:
+    """candidate_id가 ancestor_id의 하위(descendant)인지 parent_id를 따라 거슬러 올라가며 검사"""
+    conn = get_connection()
+    current_id = candidate_id
+    while current_id is not None:
+        row = conn.execute(
+            "SELECT parent_id FROM sections WHERE id=?", (current_id,)
+        ).fetchone()
+        if not row:
+            break
+        current_id = row["parent_id"]
+        if current_id == ancestor_id:
+            conn.close()
+            return True
+    conn.close()
+    return False
 
 
 def reorder_sections(sibling_ids: list[int]) -> bool:
