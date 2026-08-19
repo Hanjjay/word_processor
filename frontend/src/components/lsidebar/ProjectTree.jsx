@@ -1,11 +1,8 @@
 import { useEffect, useState } from 'react'
 import {
-  DndContext,
   DragOverlay,
-  PointerSensor,
+  useDndMonitor,
   useDroppable,
-  useSensor,
-  useSensors,
 } from '@dnd-kit/core'
 import {
   SortableContext,
@@ -40,12 +37,6 @@ function ProjectTree({
   const [activeItem,    setActiveItem]    = useState(null)
   const [dropIndicator, setDropIndicator] = useState(null)
     // { rowType: 'doc'|'folder', targetId, position: 'before'|'inside'|'after' }
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } })
-  )
-
-  if (!tree) return null
-  const rootSections = buildTree(tree.sections)
 
   const handleDragStart = (event) => {
     const data = event.active.data.current
@@ -59,6 +50,7 @@ function ProjectTree({
 
   // Drag 중 대상 위 어느 위치(before/inside/after)인지 판단해 표시 상태만 갱신 (상태 변경 없음)
   const handleDragOver = (event) => {
+    if (!tree) return // DndContext는 이제 상위(App)가 소유 — 프로젝트 미선택 등으로 tree가 없을 때도 monitor는 계속 등록돼있어 방어 필요
     const { active, over } = event
     const overKind = getOverKind(over)
     const position = computeDropPosition(overKind, active, over)
@@ -78,15 +70,16 @@ function ProjectTree({
 
   // ── Drag 종료 → 판정된 position에 따라 이동/정렬 콜백 호출 (Backend 연결은 LSidebar가 담당) ──
   const handleDragEnd = (event) => {
-    const { active, over } = event
     clearDragState()
+    if (!tree) return
 
-    if (!over) return                 // over가 null (트리 밖으로 드롭)
+    const { active, over } = event
+    if (!over) return                 // over가 null (트리 밖 또는 EditorPane으로 드롭 — 이 컴포넌트가 처리할 대상 아님)
     if (active.id === over.id) return // 자기 자신 위 Drop(대부분의 경우 — 폴더의 나머지 경우는 buildDropPlan에서 재검사)
 
     const overKind = getOverKind(over)
     const position = computeDropPosition(overKind, active, over)
-    if (!position) return
+    if (!position) return             // over.id가 doc-*/sec-*/drop-sec-* 패턴이 아니면(예: editor-drop-zone-*) 여기서 조용히 종료
 
     const plan = buildDropPlan(overKind, position, active, over, tree)
     if (!isDropPlanValid(plan, tree)) return
@@ -116,6 +109,18 @@ function ProjectTree({
     }
   }
 
+  // DndContext는 App.jsx가 소유(LSidebar+Editor를 함께 감싸야 EditorPane Drop도 같은 세션에서 동작) —
+  // 이 컴포넌트는 그 컨텍스트를 useDndMonitor로 구독만 한다 (기존 DndContext 재사용, 새로 만들지 않음)
+  useDndMonitor({
+    onDragStart: handleDragStart,
+    onDragOver:  handleDragOver,
+    onDragEnd:   handleDragEnd,
+    onDragCancel: clearDragState,
+  })
+
+  if (!tree) return null
+  const rootSections = buildTree(tree.sections)
+
   // 문서 이름 변경 (트리 전역에서 사용)
   const handleRenameDoc = async (docId, currentTitle) => {
     const newTitle = window.prompt('문서 이름을 입력하세요', currentTitle)
@@ -133,13 +138,7 @@ function ProjectTree({
   }
 
   return (
-    <DndContext
-      sensors={sensors}
-      onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
-      onDragEnd={handleDragEnd}
-      onDragCancel={clearDragState}
-    >
+    <>
       <div className="pt-tree">
         {/* 루트 문서 */}
         {tree.root_docs?.length > 0 && (
@@ -181,7 +180,7 @@ function ProjectTree({
           </div>
         )}
       </DragOverlay>
-    </DndContext>
+    </>
   )
 }
 
@@ -220,8 +219,9 @@ function SortableDocItem({ doc, parentKey, siblings, isActive, dropIndicator, on
   } = useSortable({
     id: `doc-${doc.id}`,
     data: {
-      itemType: 'doc',
-      docId:    doc.id,
+      itemType: 'doc',       // 기존 정렬/이동(3~7단계) 로직이 이 필드를 기준으로 동작 — 유지
+      type:     'document',  // EditorPane Drop(다음 단계)에서 파일/폴더를 구분해 읽을 필드
+      docId:    doc.id,      // 문서 고유 id — 이동해도 절대 안 바뀜, EditorPane이 열 문서 식별자
       title:    doc.title,
       parentKey,
       siblings,
@@ -325,7 +325,8 @@ function SectionNode({
     id: `sec-${section.id}`,
     disabled: isTopLevel,
     data: {
-      itemType:  'section',
+      itemType:  'section', // 기존 정렬/이동(3~7단계) 로직이 이 필드를 기준으로 동작 — 유지
+      type:      'folder',  // 파일(document) Drag 데이터와 명확히 구분하기 위한 필드
       sectionId: section.id,
       name:      section.name,
       parentKey: section.parent_id ? `sec-${section.parent_id}` : 'root',

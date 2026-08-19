@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, Fragment } from 'react'
-import { useDroppable } from '@dnd-kit/core'
+import { useDndContext, useDndMonitor, useDroppable } from '@dnd-kit/core'
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels'
 import MenuBar    from '../menubar/MenuBar'
 import Breadcrumb from '../breadcrumb/Breadcrumb'
@@ -18,9 +18,26 @@ function Editor({
   panes, activePaneId, onPaneFocus, onSplit, onClosePane,
   project, tree,
   onDocSaved, onNewDoc, onNewProject,
-  isDragging,
+  onOpenInPane,
 }) {
   const [mode, setMode] = useState('일반')
+
+  // ── EditorPane Drop → 해당 pane에서 문서 열기 ──
+  // active.data.current → 드래그된 문서 정보(ProjectTree.jsx의 document Drag 데이터)
+  // over.data.current    → 어느 EditorPane인지(DroppablePane의 { type: 'editor-pane', paneId })
+  // 실제 전환은 App.jsx의 setPaneDocument(paneId, docId) 재사용 — 사이드바 클릭과 동일한 경로.
+  useDndMonitor({
+    onDragEnd: (event) => {
+      const { active, over } = event
+      if (!over) return
+      const activeData = active.data?.current
+      const overData    = over.data?.current
+      if (activeData?.type !== 'document') return   // document 타입만 허용 — 폴더는 무시
+      if (overData?.type !== 'editor-pane') return   // EditorPane Drop Target이 아니면 무시(트리 내부 이동은 ProjectTree.jsx가 처리)
+
+      onOpenInPane?.(overData.paneId, activeData.docId)
+    },
+  })
 
   const handleSaved = useCallback(() => onDocSaved?.(), [onDocSaved])
 
@@ -120,7 +137,7 @@ function Editor({
               <Fragment key={pane.id}>
                 {idx > 0 && <PanelResizeHandle className="editor-resize-handle" />}
                 <Panel minSize="20%">
-                  <DroppablePane paneId={pane.id} isDragging={isDragging}>
+                  <DroppablePane paneId={pane.id}>
                     <EditorPane
                       docId={pane.docId}
                       mode={mode}
@@ -139,20 +156,25 @@ function Editor({
   )
 }
 
-function DroppablePane({ paneId, isDragging, children }) {
+function DroppablePane({ paneId, children }) {
+  // 현재 드래그 중인 아이템이 document 타입인지 — 폴더 Drag 중엔 이 pane을 Drop Target으로 취급하지 않음(요구사항 4)
+  const { active } = useDndContext()
+  const isDraggingDocument = active?.data?.current?.type === 'document'
+
   const { isOver, setNodeRef } = useDroppable({
     id: `editor-drop-zone-${paneId}`,
     data: { type: 'editor-pane', paneId },
+    disabled: !isDraggingDocument,
   })
 
   return (
     <div
       ref={setNodeRef}
       className={`editor-drop-zone
-        ${isDragging ? 'drag-active' : ''}
-        ${isOver     ? 'drag-over'   : ''}`}
+        ${isDraggingDocument ? 'drag-active' : ''}
+        ${isOver && isDraggingDocument ? 'drag-over' : ''}`}
     >
-      {isDragging && (
+      {isDraggingDocument && (
         <div className="drop-hint">
           <span>📄</span>
           <span>이 패널에서 열기</span>
