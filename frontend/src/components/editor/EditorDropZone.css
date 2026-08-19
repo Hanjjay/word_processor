@@ -42,3 +42,17 @@
   border-color: #9d8bff;
   background: #2a1f50;
 }
+
+/* ── left/center/right Drop 위치 강조 (판정만, 아직 Pane 생성/문서 열기 없음) ── */
+.editor-drop-zone-overlay {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(91, 79, 207, 0.16);
+  border: 1.5px solid #9d8bff;
+  pointer-events: none;
+  z-index: 40;
+}
+.editor-drop-zone-overlay.zone-left   { left: 0;  width: 25%; }
+.editor-drop-zone-overlay.zone-right  { right: 0; width: 25%; }
+.editor-drop-zone-overlay.zone-center { left: 25%; width: 50%; }

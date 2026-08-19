@@ -22,7 +22,7 @@ import './TipTapEditor.css'
  * Pane의 뷰가 즉시 재렌더링된다. Cursor/Selection/Scroll은 뷰(EditorView)
  * 소유라서 자동으로 Pane별 독립 유지된다.
  */
-function EditorPane({ docId, mode, onSaved, onSaveState, isFocused, onFocus }) {
+function EditorPane({ docId, mode, onSaved, onSaveState, isFocused, onFocus, onClose }) {
   const [docTitle,  setDocTitle]  = useState('')
   const [editorKey, setEditorKey] = useState(0)
   const [saveState, setSaveState] = useState('저장됨')
@@ -241,8 +241,17 @@ function EditorPane({ docId, mode, onSaved, onSaveState, isFocused, onFocus }) {
 
   if (!docId) {
     return (
-      <div className="epane-empty">
-        <p>문서를 선택하거나 여기로 드롭하세요</p>
+      <div className="epane-blank">
+        <div className="epane-header epane-header-empty">
+          <button
+            className="epane-close"
+            title="패널 닫기"
+            onClick={e => { e.stopPropagation(); onClose?.() }}
+          >×</button>
+        </div>
+        <div className="epane-empty">
+          <p>문서를 선택하거나 여기로 드롭하세요</p>
+        </div>
       </div>
     )
   }
@@ -251,9 +260,16 @@ function EditorPane({ docId, mode, onSaved, onSaveState, isFocused, onFocus }) {
     <div className={`epane ${isFocused ? 'focused' : ''}`} onClick={onFocus}>
       <div className="epane-header">
         <span className="epane-title">{docTitle || '제목 없음'}</span>
-        <span className={`epane-save ${saveState === '저장됨' ? 'saved' : 'unsaved'}`}>
-          {saveState === '저장됨' ? '저장됨 ✓' : saveState === '저장 안 됨' ? '수정됨 ●' : saveState}
-        </span>
+        <div className="epane-header-right">
+          <span className={`epane-save ${saveState === '저장됨' ? 'saved' : 'unsaved'}`}>
+            {saveState === '저장됨' ? '저장됨 ✓' : saveState === '저장 안 됨' ? '수정됨 ●' : saveState}
+          </span>
+          <button
+            className="epane-close"
+            title="패널 닫기"
+            onClick={e => { e.stopPropagation(); onClose?.() }}
+          >×</button>
+        </div>
       </div>
       <div className="epane-canvas">
         <div className="a4-paper">

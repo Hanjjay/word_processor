@@ -65,10 +65,36 @@ function App() {
     })
   }, [activePaneId])
 
-  // pane 닫기 (분할 닫기)
+  // EditorPane left/right Drop → target pane 옆에 새 pane 삽입, 그 자리에 docId 설정.
+  // handleSplit과 목적은 비슷하지만 (a) 임의 위치(target 옆)에 끼워 넣어야 하고
+  // (b) activePane이 아니라 "드롭된 문서"의 docId를 써야 하고 (c) 2개 제한도 없어야 해서
+  // handleSplit을 그대로 호출할 수는 없다 — 대신 그 함수가 쓰던 것과 같은 paneId 생성 규칙
+  // (`pane-${Date.now()}`)과 setPanes 불변 배열 패턴을 그대로 재사용한다.
+  // 빈 pane(docId === null)에 떨어진 경우는 이 함수를 타지 않고 Editor.jsx가 기존
+  // onOpenInPane(=setPaneDocument, center Drop과 동일 경로)으로 처리한다.
+  const handleSplitPane = useCallback((targetPaneId, docId, side) => {
+    setPanes(prev => {
+      const idx = prev.findIndex(p => p.id === targetPaneId)
+      if (idx === -1) return prev
+
+      const newPane = { id: `pane-${Date.now()}`, docId }
+      const insertAt = side === 'left' ? idx : idx + 1
+      const next = [...prev]
+      next.splice(insertAt, 0, newPane)
+      return next
+    })
+  }, [])
+
+  // pane 닫기 — 2개 이상이면 그 pane만 제거, 마지막 1개 남았을 때는 배열을 비우지 않고
+  // 같은 paneId를 유지한 채 docId만 null로 비운다("문서 없음" ≠ "Editor 영역 없음").
+  // docId를 null로 바꾸는 것만으로 EditorPane의 기존 docId effect가 releaseYDoc까지 그대로 처리한다.
   const handleClosePane = useCallback((paneId) => {
     setPanes(prev => {
-      if (prev.length <= 1) return prev
+      if (prev.length <= 1) {
+        const only = prev[0]
+        if (!only || only.docId == null) return prev // 이미 빈 pane이면 변화 없음
+        return [{ ...only, docId: null }]
+      }
       const next = prev.filter(p => p.id !== paneId)
       if (activePaneId === paneId) setActivePaneId(next[0].id)
       return next
@@ -109,6 +135,7 @@ function App() {
           onNewDoc={handleNewDoc}
           onNewProject={() => setRefreshKey(k => k + 1)}
           onOpenInPane={setPaneDocument}
+          onSplitPane={handleSplitPane}
         />
         <RSidebar />
       </div>
