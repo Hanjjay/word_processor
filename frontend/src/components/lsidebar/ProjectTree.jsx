@@ -1,5 +1,13 @@
 import { useState } from 'react'
 import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useDroppable,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core'
+import {
   SortableContext,
   useSortable,
   verticalListSortingStrategy,
@@ -19,10 +27,65 @@ function ProjectTree({
   onDocSelect,
   onCreateSection, onRenameSection, onDeleteSection,
   onCreateDocument, onDeleteDocument,
-  onRefresh,   // 이름 변경 후 트리 갱신
+  onRefresh,          // 이름 변경 후 트리 갱신
+  onReorderSiblings,  // 3단계: 같은 부모 안 순서 변경 (Frontend 상태만)
 }) {
+  // ── 1단계: Drag 식별 + DragOverlay 표시 (Drop/이동/정렬 없음) ──
+  // ── 2단계: 폴더 Drop Target 시각 강조 (실제 이동/정렬/API 호출 없음) ──
+  // early return(tree 없음)보다 앞에 위치 — Hooks 규칙상 조건부 호출 금지
+  const [activeItem,   setActiveItem]   = useState(null)
+  const [dropTargetId, setDropTargetId] = useState(null) // 현재 강조 중인 droppable id (`drop-sec-${id}`)
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } })
+  )
+
   if (!tree) return null
   const rootSections = buildTree(tree.sections)
+
+  const handleDragStart = (event) => {
+    const data = event.active.data.current
+    if (!data) return
+    if (data.itemType === 'doc') {
+      setActiveItem({ id: data.docId, type: 'file', name: data.title || '제목 없음' })
+    } else if (data.itemType === 'section') {
+      setActiveItem({ id: data.sectionId, type: 'folder', name: data.name })
+    }
+  }
+
+  // Drag 중 폴더 위로 올라왔는지 판단 — 폴더만 Drop 대상으로 인정, 자기 자신 위는 제외
+  const handleDragOver = (event) => {
+    const { active, over } = event
+    // active.id / over.id (dnd-kit 원본 draggable/droppable id)
+    // active.data.current / over.data.current 로 실제 노드 정보(id, type) 식별 가능
+    setDropTargetId(isValidDropTarget(active, over) ? over.id : null)
+  }
+
+  const clearDragState = () => {
+    setActiveItem(null)
+    setDropTargetId(null)
+  }
+
+  // ── 3단계: 같은 부모 형제끼리 순서 변경 (다른 부모 이동/Backend 저장 없음) ──
+  const handleDragEnd = (event) => {
+    const { active, over } = event
+    clearDragState()
+
+    if (!over) return                 // over가 null (트리 밖으로 드롭)
+    if (active.id === over.id) return // 자기 자신 위 / 같은 위치 Drop
+
+    const activeData = active.data?.current
+    const overData    = over.data?.current
+    if (!activeData?.itemType || !overData?.itemType) return // 폴더 Drop Target(drop-sec-*) 등은 이번 단계 대상 아님
+    if (activeData.itemType !== overData.itemType) return    // 문서 ↔ 섹션 혼합 무시
+    if (activeData.parentKey !== overData.parentKey) return  // 다른 부모끼리는 이번 단계에서 무시
+
+    onReorderSiblings?.({
+      itemType:  activeData.itemType,
+      parentKey: activeData.parentKey,
+      activeId:  activeData.itemType === 'doc' ? activeData.docId : activeData.sectionId,
+      overId:    activeData.itemType === 'doc' ? overData.docId   : overData.sectionId,
+    })
+  }
 
   // 문서 이름 변경 (트리 전역에서 사용)
   const handleRenameDoc = async (docId, currentTitle) => {
@@ -41,36 +104,54 @@ function ProjectTree({
   }
 
   return (
-    <div className="pt-tree">
-      {/* 루트 문서 */}
-      {tree.root_docs?.length > 0 && (
-        <SortableDocList
-          docs={tree.root_docs}
-          parentKey="root"
-          currentDocId={currentDocId}
-          onDocSelect={onDocSelect}
-          onDeleteDocument={onDeleteDocument}
-          onRenameDocument={handleRenameDoc}
-        />
-      )}
+    <DndContext
+      sensors={sensors}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragEnd={handleDragEnd}
+      onDragCancel={clearDragState}
+    >
+      <div className="pt-tree">
+        {/* 루트 문서 */}
+        {tree.root_docs?.length > 0 && (
+          <SortableDocList
+            docs={tree.root_docs}
+            parentKey="root"
+            currentDocId={currentDocId}
+            onDocSelect={onDocSelect}
+            onDeleteDocument={onDeleteDocument}
+            onRenameDocument={handleRenameDoc}
+          />
+        )}
 
-      {rootSections.map(section => (
-        <SectionNode
-          key={section.id}
-          section={section}
-          siblings={rootSections}
-          depth={0}
-          currentDocId={currentDocId}
-          onDocSelect={onDocSelect}
-          onCreateSection={onCreateSection}
-          onRenameSection={onRenameSection}
-          onDeleteSection={onDeleteSection}
-          onCreateDocument={onCreateDocument}
-          onDeleteDocument={onDeleteDocument}
-          onRenameDocument={handleRenameDoc}
-        />
-      ))}
-    </div>
+        {rootSections.map(section => (
+          <SectionNode
+            key={section.id}
+            section={section}
+            siblings={rootSections}
+            depth={0}
+            currentDocId={currentDocId}
+            dropTargetId={dropTargetId}
+            onDocSelect={onDocSelect}
+            onCreateSection={onCreateSection}
+            onRenameSection={onRenameSection}
+            onDeleteSection={onDeleteSection}
+            onCreateDocument={onCreateDocument}
+            onDeleteDocument={onDeleteDocument}
+            onRenameDocument={handleRenameDoc}
+          />
+        ))}
+      </div>
+
+      <DragOverlay>
+        {activeItem && (
+          <div className="pt-drag-overlay">
+            <span>{activeItem.type === 'folder' ? '📁' : '📄'}</span>
+            <span>{activeItem.name}</span>
+          </div>
+        )}
+      </DragOverlay>
+    </DndContext>
   )
 }
 
@@ -184,7 +265,7 @@ function SortableDocItem({ doc, parentKey, siblings, isActive, onSelect, onDelet
 
 // ── 섹션 노드 ────────────────────────────────────────
 function SectionNode({
-  section, siblings, depth, currentDocId,
+  section, siblings, depth, currentDocId, dropTargetId,
   onDocSelect, onCreateSection, onRenameSection,
   onDeleteSection, onCreateDocument, onDeleteDocument,
   onRenameDocument,
@@ -209,6 +290,21 @@ function SectionNode({
     },
   })
 
+  // ── 2단계: 폴더를 Drop Target으로 등록 (실제 이동 없음) ──
+  const droppableId = `drop-sec-${section.id}`
+  const { setNodeRef: setDroppableRef } = useDroppable({
+    id: droppableId,
+    data: { type: 'folder', sectionId: section.id },
+    disabled: isDragging, // 드래그 중인 폴더 자신 위로는 드롭 판정 안 함
+  })
+  const isDropTarget = dropTargetId === droppableId
+
+  // useSortable(정렬용)과 useDroppable(폴더 드롭용) ref를 같은 DOM 노드에 병합
+  const setRefs = (node) => {
+    setNodeRef(node)
+    setDroppableRef(node)
+  }
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -223,9 +319,9 @@ function SectionNode({
   }[section.type] ?? ''
 
   return (
-    <div ref={setNodeRef} style={style}>
+    <div ref={setRefs} style={style}>
       <div
-        className={`pt-section-head depth-${depth}`}
+        className={`pt-section-head depth-${depth} ${isDropTarget ? 'drop-target' : ''}`}
         style={{ paddingLeft: `${12 + depth * 14}px` }}
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => { setHover(false); setMenuOpen(false) }}
@@ -312,6 +408,7 @@ function SectionNode({
               sections={section.children}
               depth={depth + 1}
               currentDocId={currentDocId}
+              dropTargetId={dropTargetId}
               onDocSelect={onDocSelect}
               onCreateSection={onCreateSection}
               onRenameSection={onRenameSection}
@@ -363,6 +460,19 @@ function SortableSectionList({ sections, depth, ...rest }) {
       ))}
     </SortableContext>
   )
+}
+
+// ── Drop 가능 여부 판단 (2단계: 폴더만 허용, 실제 이동 없음) ─
+function isValidDropTarget(active, over) {
+  if (!over) return false
+  const overData = over.data?.current
+  if (overData?.type !== 'folder') return false // 폴더가 아니면(파일 등) 불가
+
+  const activeData = active.data?.current
+  if (activeData?.itemType === 'section' && activeData.sectionId === overData.sectionId) {
+    return false // 폴더를 자기 자신 위로 드롭하는 경우 제외
+  }
+  return true
 }
 
 // ── flat → 트리 변환 ─────────────────────────────────

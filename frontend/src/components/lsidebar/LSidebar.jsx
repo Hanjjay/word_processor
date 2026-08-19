@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { arrayMove } from '@dnd-kit/sortable'
 import { api } from '../../api'
 import ProjectSelector from './ProjectSelector'
 import ProjectTree     from './ProjectTree'
@@ -117,6 +118,45 @@ function LSidebar({
     } catch (e) { alert(e.message) }
   }
 
+  // ── 3단계: 같은 부모 형제끼리 순서 변경 (Frontend 상태만, Backend 저장 없음) ──
+  const handleReorderSiblings = ({ itemType, parentKey, activeId, overId }) => {
+    if (activeId === overId) return
+
+    setTree(prev => {
+      if (!prev) return prev
+
+      if (itemType === 'doc') {
+        if (parentKey === 'root') {
+          const oldIndex = prev.root_docs.findIndex(d => d.id === activeId)
+          const newIndex = prev.root_docs.findIndex(d => d.id === overId)
+          if (oldIndex === -1 || newIndex === -1) return prev
+          return { ...prev, root_docs: arrayMove(prev.root_docs, oldIndex, newIndex) }
+        }
+        const sectionId = Number(parentKey.replace('sec-', ''))
+        return {
+          ...prev,
+          sections: prev.sections.map(s => {
+            if (s.id !== sectionId) return s
+            const oldIndex = s.documents.findIndex(d => d.id === activeId)
+            const newIndex = s.documents.findIndex(d => d.id === overId)
+            if (oldIndex === -1 || newIndex === -1) return s
+            return { ...s, documents: arrayMove(s.documents, oldIndex, newIndex) }
+          }),
+        }
+      }
+
+      if (itemType === 'section') {
+        const oldIndex = prev.sections.findIndex(s => s.id === activeId)
+        const newIndex = prev.sections.findIndex(s => s.id === overId)
+        if (oldIndex === -1 || newIndex === -1) return prev
+        if (prev.sections[oldIndex].parent_id !== prev.sections[newIndex].parent_id) return prev
+        return { ...prev, sections: arrayMove(prev.sections, oldIndex, newIndex) }
+      }
+
+      return prev
+    })
+  }
+
   const handleDeleteDocument = async (docId) => {
     if (!window.confirm('문서를 삭제할까요?')) return
     try {
@@ -156,6 +196,7 @@ function LSidebar({
             onCreateDocument={handleCreateDocument}
             onDeleteDocument={handleDeleteDocument}
             onRefresh={refreshTree}   // ★ 문서 이름 변경 후 새로고침
+            onReorderSiblings={handleReorderSiblings}
           />
         )}
       </div>
